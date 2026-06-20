@@ -1,6 +1,6 @@
 # karst — landing page
 
-The public marketing site for [karst](https://github.com/karst-dev/karst), the MCP-native
+The public marketing site for [karst](https://github.com/Moin105/upgraded-garbanzo), the MCP-native
 code-context tool. Self-contained, no build step, deploys as a static site on Vercel's free tier.
 
 ## What it is
@@ -30,12 +30,12 @@ Files in this folder:
 Vercel's free Hobby tier does **not** deploy from private repos. That's why this folder is meant
 to live in its own **public** GitHub repo, separate from the main karst codebase.
 
-1. Create a new public repo on GitHub, e.g. `karst-dev/karst-landing`.
+1. Create a new public repo on GitHub, e.g. `Moin105/karst-landing`.
 2. Copy the contents of this folder to the **root** of that repo (not a subdirectory) and push:
    ```bash
    cd landing/
    git init
-   git remote add origin git@github.com:karst-dev/karst-landing.git
+   git remote add origin git@github.com:Moin105/karst-landing.git
    git add .
    git commit -m "Initial landing page"
    git branch -M main
@@ -82,7 +82,7 @@ accept JSON POSTs and respond with any 2xx status on success.
 
 ## How this folder was split out of the main private repo
 
-This folder originally lived as `landing/` inside the private `karst-dev/karst` monorepo. To
+This folder originally lived as `landing/` inside the private `Moin105/upgraded-garbanzo` monorepo. To
 publish it as its own public repo while keeping the history:
 
 ### Option A — `git subtree split` (recommended, lossless history)
@@ -91,7 +91,7 @@ From the root of the private monorepo:
 
 ```bash
 git subtree split --prefix=landing -b landing-only
-git push git@github.com:karst-dev/karst-landing.git landing-only:main
+git push git@github.com:Moin105/karst-landing.git landing-only:main
 ```
 
 `landing-only` is a temporary branch containing only the commits that touched `landing/`,
@@ -105,7 +105,7 @@ git clone --no-local karst karst-landing
 cd karst-landing
 git filter-branch --prune-empty --subdirectory-filter landing main
 git remote remove origin
-git remote add origin git@github.com:karst-dev/karst-landing.git
+git remote add origin git@github.com:Moin105/karst-landing.git
 git push -u origin main
 ```
 

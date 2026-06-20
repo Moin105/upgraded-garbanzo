@@ -1,0 +1,151 @@
+# karst MCP server
+
+Connect karst to any MCP host — **Claude Desktop, Cursor, Continue, Cline, or a
+custom agent** — and your AI tool gets scoped, cited code context instead of
+reading your repo blind.
+
+The server returns *context*, not answers: it never calls an LLM, so **you don't
+need to give karst an API key**. Your host (Claude Desktop / Cursor) already has
+the model; karst just feeds it the right slice of the repo.
+
+---
+
+## 1. Install
+
+```bash
+# from a clone of this repo
+pip install -e .
+```
+
+This installs two console commands:
+
+- `coderchecker` — the CLI (`index`, `ask`, `impact`, `packs`, `review`)
+- `karst-mcp` — the MCP server (this doc)
+
+> **PATH note (Windows):** pip may install the scripts to a `Scripts\` folder
+> that isn't on your PATH. If `karst-mcp` isn't found, use the module form in the
+> configs below: `python -m coderchecker.mcp_server`.
+
+## 2. Index a repo (one time)
+
+The MCP tools read a prebuilt index. Build it once per repo:
+
+```bash
+coderchecker index /path/to/your-repo
+# optional but recommended — enables find_impact and pack scoping:
+coderchecker graph-index /path/to/your-repo
+coderchecker packs --storage ~/.coderchecker/indexes/your-repo \
+  suggest /path/to/your-repo --apply --retag
+```
+
+(You can also do this from inside the host by calling the `index_repository`
+tool — handy for small repos. For large repos prefer the CLI so you don't block
+the host on a long call.)
+
+## 3. Wire it into your IDE
+
+### Claude Desktop
+
+Edit `claude_desktop_config.json`:
+
+- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "karst": {
+      "command": "karst-mcp"
+    }
+  }
+}
+```
+
+If `karst-mcp` isn't on PATH, use:
+
+```json
+{
+  "mcpServers": {
+    "karst": {
+      "command": "python",
+      "args": ["-m", "coderchecker.mcp_server"]
+    }
+  }
+}
+```
+
+Restart Claude Desktop. You'll see a 🔌 / tools icon — `karst` and its 5 tools
+should be listed.
+
+### Cursor
+
+Create `.cursor/mcp.json` in your project root (or `~/.cursor/mcp.json` for all
+projects):
+
+```json
+{
+  "mcpServers": {
+    "karst": {
+      "command": "karst-mcp"
+    }
+  }
+}
+```
+
+Reload Cursor. Settings → MCP should show `karst` as connected.
+
+### Continue / Cline / other MCP hosts
+
+Any host that speaks MCP over stdio works. Point it at the command `karst-mcp`
+(or `python -m coderchecker.mcp_server`). No args, no env vars required.
+
+## 4. Use it
+
+Once connected, just ask your IDE's model normally. It will call karst's tools
+when useful. Examples that trigger them:
+
+- *"Using karst, how does checkout charge the user in /path/to/repo?"*
+  → `search_code` returns the relevant functions with `file:line` citations.
+- *"What breaks if I change the `login` function in this repo?"*
+  → `find_impact` returns the blast radius from the call graph.
+- *"What context packs exist for this repo?"* → `list_packs`.
+
+You can always pass the repo's absolute path; the tools resolve the index from
+`~/.coderchecker/indexes/<repo-name>`.
+
+---
+
+## Tools
+
+| Tool | What it does | Needs |
+|---|---|---|
+| `search_code(query, repo_path, packs?, limit?)` | Ranked code chunks for a question, each cited to `file:line`. Scope with `packs` to cut tokens. | vector index |
+| `find_impact(symbol, repo_path, max_depth?)` | Blast radius of changing a symbol — what depends on it, ranked. | graph (`graph-index`) |
+| `list_packs(repo_path)` | Named context packs available for the repo. | packs (suggest+apply) |
+| `index_status(repo_path)` | Whether a repo is indexed and how big the index is. | — |
+| `index_repository(repo_path, reset?)` | Build/refresh the vector index **and** the graph. Slow first run; instant after. | — |
+
+## Why this design
+
+Most "code context" integrations dump files into the model and hope. karst
+instead:
+
+1. **Scopes** — pack-filtered retrieval reads ~200 chunks, not 5,000.
+2. **Cites** — every chunk carries an exact `file:line`, so the model (and you)
+   can verify, not trust.
+3. **Predicts** — `find_impact` answers "what else breaks?" from a real call
+   graph, which embeddings alone can't do.
+
+Net effect on a real 246-file repo (Byfoods): ~60% fewer input tokens per
+question, and answers grounded in citations.
+
+## Troubleshooting
+
+- **"This repo isn't indexed yet."** Run `coderchecker index <path>` (and
+  `graph-index` for impact), or call the `index_repository` tool.
+- **`karst-mcp` not found.** Use `python -m coderchecker.mcp_server` in the
+  config, or add the pip Scripts dir to PATH.
+- **Host shows no tools.** Fully quit and reopen the host after editing its
+  config — most hosts only read MCP config at startup.
+- **First `search_code` is slow.** The embedding model downloads + loads on
+  first use (~once), then it's fast.

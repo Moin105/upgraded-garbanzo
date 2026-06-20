@@ -103,15 +103,19 @@
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
     <symbol id="karst-logo" viewBox="0 0 40 40">
-      <!-- 3 satellite circles, white -->
-      <line x1="20" y1="20" x2="6"  y2="8"  stroke="#ffffff" stroke-width="1.5" />
-      <line x1="20" y1="20" x2="34" y2="10" stroke="#ffffff" stroke-width="1.5" />
-      <line x1="20" y1="20" x2="20" y2="34" stroke="#ffffff" stroke-width="1.5" />
-      <circle cx="6"  cy="8"  r="3" fill="#ffffff" />
-      <circle cx="34" cy="10" r="3" fill="#ffffff" />
-      <circle cx="20" cy="34" r="3" fill="#ffffff" />
-      <!-- center, purple accent -->
-      <circle cx="20" cy="20" r="5.5" fill="#818cf8" stroke="#ffffff" stroke-width="1.5" />
+      <!-- pentapod: 5 legs from a faceted carapace (Rocky, the Eridian) -->
+      <line x1="20" y1="13.6" x2="20" y2="4.5" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="26.09" y1="18.02" x2="34.74" y2="15.21" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="23.76" y1="25.18" x2="29.11" y2="32.54" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="16.24" y1="25.18" x2="10.89" y2="32.54" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="13.91" y1="18.02" x2="5.26" y2="15.21" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round"/>
+      <circle cx="20" cy="4.5" r="2.1" fill="#ffffff"/>
+      <circle cx="34.74" cy="15.21" r="2.1" fill="#ffffff"/>
+      <circle cx="29.11" cy="32.54" r="2.1" fill="#ffffff"/>
+      <circle cx="10.89" cy="32.54" r="2.1" fill="#ffffff"/>
+      <circle cx="5.26" cy="15.21" r="2.1" fill="#ffffff"/>
+      <polygon points="20,13.6 26.09,18.02 23.76,25.18 16.24,25.18 13.91,18.02" fill="#818cf8" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
+      <polygon points="20,16.8 23.04,19.01 21.88,22.59 18.12,22.59 16.96,19.01" fill="#6366f1"/>
     </symbol>
   </defs>
 </svg>
@@ -123,9 +127,9 @@
       <span class="text-lg font-semibold tracking-tight">karst</span>
     </a>
     <nav class="flex items-center gap-6 text-sm text-dim">
-      <a href="#how" class="hover:text-white">How it works</a>
+      <a href="/how-it-works.html" class="hover:text-white">How it works</a>
       <a href="#install" class="hover:text-white">Install</a>
-      <a href="https://github.com/karst-dev/karst" class="hover:text-white">GitHub</a>
+      <a href="https://github.com/Moin105/upgraded-garbanzo" class="hover:text-white">GitHub</a>
     </nav>
   </div>
 </header>
@@ -143,7 +147,7 @@
     </p>
     <div class="mt-8 flex items-center justify-center gap-3 flex-wrap">
       <a href="#install" class="btn-primary">Install free</a>
-      <a href="https://github.com/karst-dev/karst" class="btn-ghost">View on GitHub</a>
+      <a href="https://github.com/Moin105/upgraded-garbanzo" class="btn-ghost">View on GitHub</a>
     </div>
   </div>
 </section>
@@ -169,7 +173,9 @@
 <!-- How it works -->
 <section id="how" class="max-w-6xl mx-auto px-5 py-20">
   <h2 class="text-3xl font-semibold tracking-tight">How it works</h2>
-  <p class="text-dim mt-2 max-w-2xl">Three steps. No vector DB to babysit, no embeddings drift, no surprise bills.</p>
+  <p class="text-dim mt-2 max-w-2xl">Three steps. No vector DB to babysit, no embeddings drift, no surprise bills.
+    <a href="/how-it-works.html" class="link-accent whitespace-nowrap">See the interactive walkthrough &rarr;</a>
+  </p>
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
     <div class="surface rounded-xl p-6">
       <div class="step-num">01 / INDEX</div>
@@ -221,7 +227,7 @@ karst ask <span class="accent-2">"How does auth work?"</span> --storage ~/.karst
   </div>
   <p class="mt-4 text-sm text-dim">
     Or wire it into Claude Desktop:
-    <a href="https://github.com/karst-dev/karst#claude-desktop" class="link-accent">claude_desktop_config.json setup &rarr;</a>
+    <a href="https://github.com/Moin105/upgraded-garbanzo#claude-desktop" class="link-accent">claude_desktop_config.json setup &rarr;</a>
   </p>
 </section>
 
@@ -252,7 +258,7 @@ karst ask <span class="accent-2">"How does auth work?"</span> --storage ~/.karst
       <span>karst &middot; Apache 2.0</span>
     </div>
     <div class="flex items-center gap-5">
-      <a href="https://github.com/karst-dev/karst" class="hover:text-white">GitHub</a>
+      <a href="https://github.com/Moin105/upgraded-garbanzo" class="hover:text-white">GitHub</a>
       <a href="https://twitter.com/karst_dev" class="hover:text-white">Twitter</a>
       <a href="mailto:hello@karst.dev" class="hover:text-white">hello@karst.dev</a>
     </div>

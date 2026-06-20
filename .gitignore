@@ -20,10 +20,13 @@ node_modules/
 .next/
 .turbo/
 .vercel/
+*.tsbuildinfo
 
 # Local databases & runtime data
 *.db
 *.db-journal
+*.db-shm
+*.db-wal
 karst.db
 karst.db-journal
 

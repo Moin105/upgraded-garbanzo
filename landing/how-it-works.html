@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>How karst works — code context for AI dev tools</title>
+<meta name="description" content="See exactly how karst indexes your repo, builds a call graph, groups code into packs, and answers questions with citations — for 60% fewer tokens." />
+
+<meta property="og:title" content="How karst works" />
+<meta property="og:description" content="Index → Graph → Pack → Ask. Watch the flow that cuts AI code-context tokens by 60% and shows the cost before every call." />
+<meta property="og:image" content="/og-image.svg" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary_large_image" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+      },
+    } },
+  };
+</script>
+<style>
+  :root {
+    --bg: #0a0a0f; --surface: #13131c; --surface-2:#191922; --text: #f8fafc; --text-dim: #94a3b8;
+    --accent: #818cf8; --accent-2: #34d399; --amber:#fbbf24; --border: #1f2937; --code-bg: #0d0d14;
+  }
+  html, body { background: var(--bg); color: var(--text); }
+  body { font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  .text-dim { color: var(--text-dim); }
+  .accent { color: var(--accent); } .accent-2 { color: var(--accent-2); }
+  .surface { background: var(--surface); border: 1px solid var(--border); }
+  .border-default { border-color: var(--border); }
+  a { color: inherit; }
+  .pill {
+    display:inline-flex; align-items:center; gap:8px; padding:6px 12px; border-radius:999px;
+    background: rgba(129,140,248,0.08); border:1px solid rgba(129,140,248,0.25);
+    color: var(--accent); font-size:12px; letter-spacing:0.02em;
+  }
+  .btn-primary { background: var(--accent); color:#0a0a0f; font-weight:600; padding:11px 18px; border-radius:8px; display:inline-flex; align-items:center; gap:8px; transition:filter .15s; }
+  .btn-primary:hover { filter:brightness(1.1); }
+  .btn-ghost { border:1px solid var(--border); color:var(--text); padding:11px 18px; border-radius:8px; display:inline-flex; align-items:center; gap:8px; transition:border-color .15s,background .15s; }
+  .btn-ghost:hover { border-color:var(--accent); background:rgba(129,140,248,0.06); }
+  .grid-bg {
+    background-image:
+      radial-gradient(ellipse at top, rgba(129,140,248,0.08), transparent 60%),
+      linear-gradient(rgba(129,140,248,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(129,140,248,0.04) 1px, transparent 1px);
+    background-size: auto, 48px 48px, 48px 48px;
+  }
+
+  /* ---------- IDE mock ---------- */
+  .ide { background: var(--code-bg); border:1px solid var(--border); border-radius:14px; overflow:hidden; box-shadow: 0 30px 80px rgba(0,0,0,0.45); }
+  .ide-bar { display:flex; align-items:center; gap:8px; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--surface); }
+  .dot { width:11px; height:11px; border-radius:50%; }
+  .ide-body { display:grid; grid-template-columns: 200px 1fr; min-height: 440px; }
+  @media (max-width: 720px){ .ide-body { grid-template-columns: 1fr; } .ide-tree { display:none; } }
+  .ide-tree { border-right:1px solid var(--border); padding:12px 8px; font-size:13px; }
+  .tree-row { display:flex; align-items:center; gap:8px; padding:5px 8px; border-radius:6px; color:var(--text-dim); transition:background .2s,color .2s; }
+  .tree-row.dir { color:var(--text); }
+  .tree-row.file.active { background: rgba(129,140,248,0.12); color:var(--text); }
+  .tree-row .swatch { width:6px; height:6px; border-radius:2px; opacity:0; transition:opacity .3s; }
+
+  .ide-main { position:relative; padding:18px 20px; }
+  pre.code { margin:0; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.7; color:#cbd5e1; white-space:pre; overflow:auto; }
+  .kw { color:#c4b5fd; } .fn { color:#7dd3fc; } .str { color:#86efac; } .cm { color:#64748b; } .ty { color:#fca5a5; } .num{color:#fcd34d;}
+
+  /* chunk outlines (step 1) */
+  .chunk { display:block; border:1px dashed transparent; border-radius:6px; padding:0 6px; margin:0 -6px; transition:border-color .35s, background .35s; }
+  .stage[data-active="1"] .chunk { border-color: rgba(129,140,248,0.5); background: rgba(129,140,248,0.04); }
+  .chunk-tag { position:absolute; right:14px; font-size:10px; letter-spacing:.04em; color:var(--accent); background:rgba(129,140,248,0.12); border:1px solid rgba(129,140,248,0.3); padding:1px 6px; border-radius:5px; opacity:0; transform:translateY(-2px); transition:opacity .35s; }
+  .stage[data-active="1"] .chunk-tag { opacity:1; }
+
+  /* overlays */
+  .overlay { position:absolute; inset:0; padding:18px 20px; opacity:0; pointer-events:none; transition:opacity .4s; }
+  .stage[data-active="2"] .ov-graph { opacity:1; }
+  .stage[data-active="3"] .ov-pack { opacity:1; }
+  .stage[data-active="4"] .ov-ask { opacity:1; pointer-events:auto; }
+  .stage[data-active="2"] pre.code,
+  .stage[data-active="3"] pre.code { opacity:0.18; }
+  .stage[data-active="4"] pre.code { opacity:0.10; }
+
+  /* pack coloring on tree (step 3 & beyond) */
+  .stage[data-active="3"] .swatch, .stage[data-active="4"] .swatch { opacity:1; }
+
+  .node { fill:var(--surface); stroke:var(--border); }
+  .node-label { fill:var(--text); font-size:11px; font-family:'JetBrains Mono',monospace; }
+  .edge { stroke:#475569; stroke-width:1.5; marker-end:url(#arrow); opacity:.0; animation:none; }
+  .stage[data-active="2"] .edge { animation: draw .8s ease forwards; }
+  .stage[data-active="2"] .edge.e2 { animation-delay:.25s; }
+  .stage[data-active="2"] .edge.e3 { animation-delay:.5s; }
+  @keyframes draw { from{opacity:0; stroke-dashoffset:120;} to{opacity:1; stroke-dashoffset:0;} }
+  .edge { stroke-dasharray:120; }
+
+  .ask-q { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; font-size:14px; }
+  .ask-a { background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:14px; font-size:13px; line-height:1.6; }
+  .cite { color:var(--accent); }
+  .meter { display:inline-flex; align-items:center; gap:8px; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent-2); background:rgba(52,211,153,0.1); border:1px solid rgba(52,211,153,0.3); padding:4px 10px; border-radius:999px; }
+
+  .step { cursor:pointer; border:1px solid var(--border); background:var(--surface); border-radius:10px; padding:12px 14px; transition:border-color .2s, background .2s; }
+  .step:hover { border-color:#3a3a4a; }
+  .step.active { border-color:var(--accent); background:rgba(129,140,248,0.08); }
+  .step .n { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--accent); }
+</style>
+</head>
+<body class="min-h-screen">
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="karst-logo" viewBox="0 0 40 40">
+    <line x1="20" y1="13.6" x2="20" y2="4.5" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
+    <line x1="26.09" y1="18.02" x2="34.74" y2="15.21" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
+    <line x1="23.76" y1="25.18" x2="29.11" y2="32.54" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
+    <line x1="16.24" y1="25.18" x2="10.89" y2="32.54" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
+    <line x1="13.91" y1="18.02" x2="5.26" y2="15.21" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
+    <circle cx="20" cy="4.5" r="2.1" fill="#fff"/>
+    <circle cx="34.74" cy="15.21" r="2.1" fill="#fff"/>
+    <circle cx="29.11" cy="32.54" r="2.1" fill="#fff"/>
+    <circle cx="10.89" cy="32.54" r="2.1" fill="#fff"/>
+    <circle cx="5.26" cy="15.21" r="2.1" fill="#fff"/>
+    <polygon points="20,13.6 26.09,18.02 23.76,25.18 16.24,25.18 13.91,18.02" fill="#818cf8" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/>
+    <polygon points="20,16.8 23.04,19.01 21.88,22.59 18.12,22.59 16.96,19.01" fill="#6366f1"/>
+  </symbol>
+</defs></svg>
+
+<!-- Header -->
+<header class="border-b border-default sticky top-0 z-30" style="background:rgba(10,10,15,0.8);backdrop-filter:blur(8px)">
+  <div class="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between">
+    <a href="/" class="flex items-center gap-2.5">
+      <svg width="28" height="28" aria-hidden="true"><use href="#karst-logo"/></svg>
+      <span class="text-lg font-semibold tracking-tight">karst</span>
+    </a>
+    <nav class="flex items-center gap-6 text-sm text-dim">
+      <a href="/how-it-works.html" class="text-white">How it works</a>
+      <a href="/#install" class="hover:text-white">Install</a>
+      <a href="https://github.com/Moin105/upgraded-garbanzo" class="hover:text-white">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<!-- Hero -->
+<section class="grid-bg">
+  <div class="max-w-4xl mx-auto px-5 pt-16 pb-10 text-center">
+    <span class="pill mono">A 4-step walkthrough</span>
+    <h1 class="mt-6 text-3xl sm:text-5xl font-semibold tracking-tight leading-tight">How karst works</h1>
+    <p class="mt-4 text-dim max-w-2xl mx-auto text-lg">
+      Your AI tools read your repo blind and bill you for it. karst gives them a map first —
+      so they load only what matters, and you see the cost before every call.
+    </p>
+  </div>
+</section>
+
+<!-- THE PROBLEM -->
+<section class="max-w-6xl mx-auto px-5 py-12">
+  <div class="grid lg:grid-cols-2 gap-8 items-center">
+    <div>
+      <div class="mono text-xs uppercase tracking-widest" style="color:#f87171">The problem</div>
+      <h2 class="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight">AI dev tools read your code blind.</h2>
+      <p class="mt-4 text-dim leading-relaxed">
+        Ask Cursor or a custom agent “how does checkout work?” and it dumps tens of thousands of
+        tokens of vaguely-related files into the model — every single time. You can’t see what it
+        loaded, you can’t scope it, and the bill arrives at the end of the month.
+      </p>
+      <ul class="mt-6 space-y-3 text-sm">
+        <li class="flex gap-3"><span style="color:#f87171">✕</span><span><b>Bill shock.</b> A single question can burn 30k+ input tokens. Usage-based pricing turns that into real money, fast.</span></li>
+        <li class="flex gap-3"><span style="color:#f87171">✕</span><span><b>Black-box context.</b> When the answer is wrong you can’t tell if it was the model or the context it never saw.</span></li>
+        <li class="flex gap-3"><span style="color:#f87171">✕</span><span><b>No blast radius.</b> Nothing tells you what <i>else</i> breaks when you change a function.</span></li>
+      </ul>
+    </div>
+
+    <!-- blind-agent illustration -->
+    <div class="surface rounded-xl p-5">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs text-dim mono">agent · “how does checkout work?”</span>
+        <span class="mono text-xs" style="color:#f87171">context window</span>
+      </div>
+      <div class="space-y-1.5">
+        <div class="h-2.5 rounded" style="background:#f87171;width:96%"></div>
+        <div class="h-2.5 rounded" style="background:#f87171;width:88%;opacity:.85"></div>
+        <div class="h-2.5 rounded" style="background:#f87171;width:92%;opacity:.7"></div>
+        <div class="h-2.5 rounded" style="background:#f87171;width:80%;opacity:.55"></div>
+        <div class="h-2.5 rounded" style="background:#f87171;width:90%;opacity:.4"></div>
+        <div class="h-2.5 rounded" style="background:#f87171;width:70%;opacity:.28"></div>
+      </div>
+      <div class="mt-4 flex items-center justify-between">
+        <span class="text-xs text-dim mono">42,000 tokens loaded · mostly irrelevant</span>
+        <span class="mono text-sm" style="color:#f87171">$0.13 / question</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- THE WALKTHROUGH (interactive IDE) -->
+<section class="max-w-6xl mx-auto px-5 py-10">
+  <div class="text-center mb-8">
+    <div class="mono text-xs uppercase tracking-widest accent">The fix, in four moves</div>
+    <h2 class="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight">Give the model a map before it reads</h2>
+    <p class="mt-3 text-dim max-w-2xl mx-auto">Click a step — or just watch. This is exactly what the engine does to your repo today.</p>
+  </div>
+
+  <div class="grid lg:grid-cols-[1fr_320px] gap-6 items-start">
+    <!-- IDE -->
+    <div class="ide">
+      <div class="ide-bar">
+        <span class="dot" style="background:#ff5f57"></span>
+        <span class="dot" style="background:#febc2e"></span>
+        <span class="dot" style="background:#28c840"></span>
+        <span class="ml-3 text-xs text-dim mono">byfoods / src / orders / orders.ts — karst</span>
+      </div>
+      <div class="ide-body stage" id="stage" data-active="1">
+        <!-- file tree -->
+        <div class="ide-tree">
+          <div class="tree-row dir">▾ src</div>
+          <div class="tree-row dir" style="padding-left:18px">▾ auth</div>
+          <div class="tree-row file" style="padding-left:30px"><span class="swatch" style="background:#818cf8"></span> users.ts</div>
+          <div class="tree-row file" style="padding-left:30px"><span class="swatch" style="background:#818cf8"></span> login.ts</div>
+          <div class="tree-row dir" style="padding-left:18px">▾ billing</div>
+          <div class="tree-row file" style="padding-left:30px"><span class="swatch" style="background:#34d399"></span> stripe.ts</div>
+          <div class="tree-row dir" style="padding-left:18px">▾ orders</div>
+          <div class="tree-row file active" style="padding-left:30px"><span class="swatch" style="background:#fbbf24"></span> orders.ts</div>
+          <div class="tree-row file" style="padding-left:30px"><span class="swatch" style="background:#fbbf24"></span> cart.ts</div>
+        </div>
+
+        <!-- main -->
+        <div class="ide-main">
+          <pre class="code"><span class="chunk"><span class="cm">// imports</span>
+<span class="kw">import</span> { getUser } <span class="kw">from</span> <span class="str">'../auth/users'</span>;
+<span class="kw">import</span> { charge } <span class="kw">from</span> <span class="str">'../billing/stripe'</span>;</span>
+
+<span class="chunk"><span class="chunk-tag">chunk · checkout()</span><span class="kw">export async function</span> <span class="fn">checkout</span>(cartId: <span class="ty">string</span>) {
+  <span class="kw">const</span> cart = <span class="kw">await</span> <span class="fn">loadCart</span>(cartId);
+  <span class="kw">const</span> user = <span class="kw">await</span> <span class="fn">getUser</span>(cart.userId);
+  <span class="kw">const</span> total = cart.items.<span class="fn">reduce</span>((s, i) => s + i.price, <span class="num">0</span>);
+  <span class="kw">return</span> <span class="fn">charge</span>(user, total);
+}</span>
+
+<span class="chunk"><span class="chunk-tag">chunk · loadCart()</span><span class="kw">async function</span> <span class="fn">loadCart</span>(id: <span class="ty">string</span>) {
+  <span class="kw">return</span> db.carts.<span class="fn">findById</span>(id);
+}</span></pre>
+
+          <!-- GRAPH overlay -->
+          <div class="overlay ov-graph">
+            <svg viewBox="0 0 520 360" width="100%" height="100%">
+              <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#64748b"/></marker></defs>
+              <line class="edge e1" x1="260" y1="80" x2="120" y2="200"/>
+              <line class="edge e2" x1="260" y1="80" x2="400" y2="200"/>
+              <line class="edge e3" x1="260" y1="80" x2="260" y2="300"/>
+              <g><rect class="node" x="205" y="55" width="110" height="44" rx="9"/><text class="node-label" x="260" y="82" text-anchor="middle">checkout()</text></g>
+              <g><rect class="node" x="62" y="178" width="116" height="44" rx="9"/><text class="node-label" x="120" y="205" text-anchor="middle">getUser()</text></g>
+              <g><rect class="node" x="342" y="178" width="116" height="44" rx="9"/><text class="node-label" x="400" y="205" text-anchor="middle">charge()</text></g>
+              <g><rect class="node" x="205" y="278" width="110" height="44" rx="9"/><text class="node-label" x="260" y="305" text-anchor="middle">loadCart()</text></g>
+            </svg>
+          </div>
+
+          <!-- PACK overlay -->
+          <div class="overlay ov-pack">
+            <div class="h-full flex flex-col justify-center gap-3">
+              <div class="text-xs text-dim mono mb-1">Files that change &amp; call together → one named pack</div>
+              <div class="surface rounded-lg p-3 flex items-center gap-3"><span class="w-2.5 h-2.5 rounded" style="background:#fbbf24"></span><span class="mono text-sm">orders</span><span class="text-xs text-dim ml-auto">orders.ts · cart.ts · ~2 chunks</span></div>
+              <div class="surface rounded-lg p-3 flex items-center gap-3"><span class="w-2.5 h-2.5 rounded" style="background:#818cf8"></span><span class="mono text-sm">auth</span><span class="text-xs text-dim ml-auto">users.ts · login.ts</span></div>
+              <div class="surface rounded-lg p-3 flex items-center gap-3"><span class="w-2.5 h-2.5 rounded" style="background:#34d399"></span><span class="mono text-sm">billing</span><span class="text-xs text-dim ml-auto">stripe.ts</span></div>
+            </div>
+          </div>
+
+          <!-- ASK overlay -->
+          <div class="overlay ov-ask">
+            <div class="h-full flex flex-col justify-center gap-3">
+              <div class="ask-q mono">› how does checkout work? <span class="text-dim">— packs: orders</span></div>
+              <div class="ask-a">
+                <code class="fn">checkout()</code> loads the cart, fetches the buyer via
+                <code class="fn">getUser()</code> <span class="cite mono">[orders/orders.ts:5]</span>,
+                sums item prices, then calls <code class="fn">charge()</code>
+                <span class="cite mono">[billing/stripe.ts]</span>.
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="meter">~3,800 tok · $0.019</span>
+                <span class="text-xs text-dim">vs $0.13 unscoped — shown <b>before</b> the call</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- step rail -->
+    <div class="space-y-3">
+      <div class="step active" data-step="1">
+        <div class="n">01 · INDEX</div>
+        <div class="font-medium mt-1">Parse into chunks</div>
+        <div class="text-sm text-dim mt-1">Tree-sitter splits every function, class and method into a real chunk — never blind line-windows.</div>
+      </div>
+      <div class="step" data-step="2">
+        <div class="n">02 · GRAPH</div>
+        <div class="font-medium mt-1">Map who calls who</div>
+        <div class="text-sm text-dim mt-1">A knowledge graph of calls &amp; imports. Now “what breaks if I change this?” is a graph walk, not a guess.</div>
+      </div>
+      <div class="step" data-step="3">
+        <div class="n">03 · PACK</div>
+        <div class="font-medium mt-1">Group into named packs</div>
+        <div class="text-sm text-dim mt-1">Related files become attachable packs — <span class="mono">auth</span>, <span class="mono">billing</span>, <span class="mono">orders</span>. The atomic unit of context.</div>
+      </div>
+      <div class="step" data-step="4">
+        <div class="n">04 · ASK</div>
+        <div class="font-medium mt-1">Load only what matters</div>
+        <div class="text-sm text-dim mt-1">A question loads only its pack. 60% fewer tokens, every answer cited, the cost shown before you spend it.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BEFORE / AFTER -->
+<section class="max-w-6xl mx-auto px-5 py-12">
+  <div class="text-center mb-8">
+    <div class="mono text-xs uppercase tracking-widest accent-2">What actually changes</div>
+    <h2 class="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight">Same question. One-seventh the cost.</h2>
+  </div>
+  <div class="grid md:grid-cols-2 gap-5">
+    <div class="surface rounded-xl p-6" style="border-color:rgba(248,113,113,0.35)">
+      <div class="mono text-xs" style="color:#f87171">WITHOUT karst</div>
+      <div class="mt-3 text-4xl font-semibold mono" style="color:#f87171">$0.13</div>
+      <ul class="mt-4 space-y-2 text-sm text-dim">
+        <li>• 42,000 tokens dumped per question</li>
+        <li>• You can’t see what was loaded</li>
+        <li>• No citations — trust it or don’t</li>
+        <li>• No idea what a change will break</li>
+      </ul>
+    </div>
+    <div class="surface rounded-xl p-6" style="border-color:rgba(52,211,153,0.4)">
+      <div class="mono text-xs accent-2">WITH karst</div>
+      <div class="mt-3 text-4xl font-semibold mono accent-2">$0.019</div>
+      <ul class="mt-4 space-y-2 text-sm text-dim">
+        <li>• ~3,800 tokens — only the relevant pack</li>
+        <li>• You see (and pin) exactly what loads</li>
+        <li>• Every claim cited to <span class="mono">file:line</span></li>
+        <li>• <span class="mono">karst impact</span> lists the blast radius</li>
+      </ul>
+    </div>
+  </div>
+  <p class="text-center text-xs text-dim mt-4 mono">Measured on Byfoods — a real 246-file NestJS + Next.js repo: 906 chunks, re-index 343s → 2.3s.</p>
+</section>
+
+<!-- HONEST STATUS -->
+<section class="max-w-4xl mx-auto px-5 py-12">
+  <div class="surface rounded-xl p-7">
+    <div class="flex items-center gap-2 mb-2">
+      <span class="w-2 h-2 rounded-full accent-2" style="background:var(--accent-2)"></span>
+      <span class="mono text-xs uppercase tracking-widest text-dim">Straight about what’s built</span>
+    </div>
+    <h2 class="text-2xl font-semibold tracking-tight">Does it solve your problem? Here’s the honest map.</h2>
+    <div class="mt-5 grid sm:grid-cols-2 gap-4 text-sm">
+      <div>
+        <div class="mono text-xs accent-2 mb-2">LIVE TODAY (CLI)</div>
+        <ul class="space-y-2 text-dim">
+          <li>✓ AST chunking across 6 languages</li>
+          <li>✓ Call/import graph + impact analysis</li>
+          <li>✓ Pack-scoped retrieval &amp; cost meter</li>
+          <li>✓ Incremental indexing + embedding cache</li>
+          <li>✓ Diff code review with citations</li>
+        </ul>
+      </div>
+      <div>
+        <div class="mono text-xs accent mb-2">COMING NEXT</div>
+        <ul class="space-y-2 text-dim">
+          <li>◷ MCP server — plug into Cursor &amp; Claude Desktop</li>
+          <li>◷ Hosted indexing (no local daemon)</li>
+          <li>◷ Team-shared pack library</li>
+          <li>◷ GitHub PR review bot</li>
+        </ul>
+      </div>
+    </div>
+    <p class="mt-5 text-sm text-dim leading-relaxed">
+      The engine that does the work — indexing, graphing, packing, costing — is real and measured.
+      The <b>MCP server</b> that lets your existing tools call it is the next thing we ship; until then,
+      karst runs as a CLI. We’d rather tell you that than pretend.
+    </p>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="max-w-4xl mx-auto px-5 pb-20 text-center">
+  <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight">Want it pointed at your repo?</h2>
+  <p class="mt-3 text-dim">Get an early-access invite when the MCP server lands, or try the CLI today.</p>
+  <div class="mt-6 flex items-center justify-center gap-3 flex-wrap">
+    <a href="/#install" class="btn-primary">Try the CLI</a>
+    <a href="/#waitlist-form" class="btn-ghost">Get early access</a>
+  </div>
+</section>
+
+<footer class="border-t border-default">
+  <div class="max-w-6xl mx-auto px-5 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-dim">
+    <div class="flex items-center gap-2.5">
+      <svg width="20" height="20" aria-hidden="true"><use href="#karst-logo"/></svg>
+      <span>karst · Apache 2.0</span>
+    </div>
+    <div class="flex items-center gap-5">
+      <a href="/" class="hover:text-white">Home</a>
+      <a href="https://github.com/Moin105/upgraded-garbanzo" class="hover:text-white">GitHub</a>
+      <a href="mailto:hello@karst.dev" class="hover:text-white">hello@karst.dev</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var stage = document.getElementById('stage');
+    var steps = Array.prototype.slice.call(document.querySelectorAll('.step'));
+    var timer = null;
+
+    function setStep(n) {
+      stage.setAttribute('data-active', String(n));
+      steps.forEach(function (s) {
+        s.classList.toggle('active', s.getAttribute('data-step') === String(n));
+      });
+    }
+    function startAuto() {
+      stopAuto();
+      timer = setInterval(function () {
+        var cur = parseInt(stage.getAttribute('data-active'), 10) || 1;
+        setStep((cur % 4) + 1);
+      }, 3600);
+    }
+    function stopAuto() { if (timer) { clearInterval(timer); timer = null; } }
+
+    steps.forEach(function (s) {
+      s.addEventListener('click', function () {
+        setStep(s.getAttribute('data-step'));
+        startAuto(); // restart the cycle from the clicked step
+      });
+    });
+
+    // pause while hovering the IDE so people can read
+    var ide = document.querySelector('.ide');
+    if (ide) {
+      ide.addEventListener('mouseenter', stopAuto);
+      ide.addEventListener('mouseleave', startAuto);
+    }
+
+    setStep(1);
+    startAuto();
+  })();
+</script>
+
+</body>
+</html>
