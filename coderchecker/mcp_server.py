@@ -9,6 +9,14 @@ karst's job is to feed it the *right* slice of the repo, scoped and cited, so
 the host model reasons over 60% fewer tokens. That also means users never give
 karst an API key.
 
+Handle lifetime: the embedder, vector store, graph and pack store for a repo
+are opened ONCE and reused for the life of the server process. We never
+open/close the Qdrant store per tool call — on Windows the local-mode file
+lock does not always release cleanly between an open/close pair inside one
+long-lived process, which would hang the second call. Caching the handles
+sidesteps that entirely. Access is serialized with a lock (a local server is
+single-user; correctness beats concurrency here).
+
 Tools exposed:
   - search_code        retrieve the most relevant code chunks for a question,
                        each anchored to file:line (optionally pack-scoped)
@@ -23,11 +31,18 @@ Run it:  karst-mcp           (console script)
 
 from __future__ import annotations
 
+import atexit
+import threading
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING
 
-# FastMCP is the high-level server in the official `mcp` package.
 from mcp.server.fastmcp import FastMCP
+
+if TYPE_CHECKING:  # pragma: no cover
+    from .embedder import Embedder
+    from .graph.store import GraphStore
+    from .packs.store import PackStore
+    from .store import ChunkStore
 
 mcp = FastMCP("karst")
 
@@ -52,8 +67,6 @@ def _graph_path(storage: Path) -> Path:
 
 
 def _is_indexed(storage: Path) -> bool:
-    # The Qdrant local collection lives in a meta/ + collection/ layout; the
-    # manifest is the cheapest existence check we control.
     return storage.exists() and (storage / "manifest.json").exists()
 
 
@@ -64,8 +77,90 @@ _NOT_INDEXED_HINT = (
 
 
 def _est_tokens(text: str) -> int:
-    # Cheap chars/4 heuristic, same as the CLI cost meter.
     return max(1, len(text) // 4)
+
+
+# --------------------------------------------------------------------------- #
+# Cached handles — opened once per repo, reused for the process lifetime.
+# --------------------------------------------------------------------------- #
+
+_lock = threading.RLock()
+_embedder: "Embedder | None" = None
+_stores: dict[str, "ChunkStore"] = {}       # keyed by str(storage)
+_graphs: dict[str, "GraphStore"] = {}       # keyed by str(graph.pkl)
+_packs: dict[str, "PackStore"] = {}         # keyed by str(packs.sqlite)
+
+
+def _get_embedder() -> "Embedder":
+    global _embedder
+    if _embedder is None:
+        from .embedder import DEFAULT_MODEL, Embedder
+
+        _embedder = Embedder(DEFAULT_MODEL, cache_dir=str(_cache_dir()))
+    return _embedder
+
+
+def _get_store(storage: Path) -> "ChunkStore":
+    key = str(storage)
+    store = _stores.get(key)
+    if store is None:
+        from .store import DEFAULT_COLLECTION, ChunkStore
+
+        store = ChunkStore(location=storage, collection=DEFAULT_COLLECTION)
+        _stores[key] = store
+    return store
+
+
+def _get_graph(storage: Path) -> "GraphStore | None":
+    gp = _graph_path(storage)
+    if not gp.exists():
+        return None
+    key = str(gp)
+    graph = _graphs.get(key)
+    if graph is None:
+        from .graph.store import GraphStore
+
+        graph = GraphStore.load(gp)
+        _graphs[key] = graph
+    return graph
+
+
+def _get_packstore(storage: Path) -> "PackStore":
+    key = str(storage / "packs.sqlite")
+    ps = _packs.get(key)
+    if ps is None:
+        from .packs.store import PackStore
+
+        ps = PackStore(storage / "packs.sqlite")
+        _packs[key] = ps
+    return ps
+
+
+def _evict_repo(storage: Path) -> None:
+    """Close and drop every cached handle for a repo.
+
+    Used before re-indexing so the indexer can take the Qdrant write lock that
+    our cached read handle would otherwise be holding.
+    """
+    key = str(storage)
+    store = _stores.pop(key, None)
+    if store is not None:
+        try:
+            store.close()
+        except Exception:
+            pass
+    _graphs.pop(str(_graph_path(storage)), None)
+    _packs.pop(str(storage / "packs.sqlite"), None)
+
+
+@atexit.register
+def _close_all() -> None:
+    for store in list(_stores.values()):
+        try:
+            store.close()
+        except Exception:
+            pass
+    _stores.clear()
 
 
 # --------------------------------------------------------------------------- #
@@ -98,26 +193,19 @@ def search_code(
     if not _is_indexed(storage):
         return _NOT_INDEXED_HINT
 
-    from .embedder import DEFAULT_MODEL, Embedder
-    from .store import DEFAULT_COLLECTION, ChunkStore
-
-    embedder = Embedder(DEFAULT_MODEL, cache_dir=str(_cache_dir()))
-    store = ChunkStore(location=storage, collection=DEFAULT_COLLECTION)
-    try:
+    with _lock:
+        embedder = _get_embedder()
+        store = _get_store(storage)
         (vec,) = embedder.embed_texts([query])
         hits = store.search(vec, limit=limit, pack_ids=packs or None)
-    finally:
-        store.close()
 
     if not hits:
         scope = f" in packs {packs}" if packs else ""
         return f"No code matched '{query}'{scope}. Try a broader query or omit packs."
 
     parts: list[str] = []
-    total_chars = 0
     for i, hit in enumerate(hits, start=1):
         c = hit.chunk
-        total_chars += len(c.code)
         parts.append(
             f"[{i}] {c.citation}  ({c.kind.value} {c.qualified_name}, score {hit.score:.3f})"
         )
@@ -150,30 +238,29 @@ def find_impact(symbol: str, repo_path: str, max_depth: int = 3) -> str:
         max_depth: How many dependency hops to walk (default 3).
     """
     storage = _storage_for(repo_path)
-    graph_path = _graph_path(storage)
-    if not graph_path.exists():
-        return (
-            "No dependency graph for this repo yet. Run `index_repository` "
-            "(it builds the graph too), then try again."
+
+    with _lock:
+        graph = _get_graph(storage)
+        if graph is None:
+            return (
+                "No dependency graph for this repo yet. Run `index_repository` "
+                "(it builds the graph too), then try again."
+            )
+
+        from .graph.impact import analyze_impact, resolve_targets
+
+        targets = resolve_targets(
+            graph, names=[symbol], qnames=[symbol], files=[symbol]
         )
+        if not targets:
+            return f"'{symbol}' was not found in the graph. Check the spelling or try a file path."
 
-    from .graph.impact import analyze_impact, resolve_targets
-    from .graph.store import GraphStore
-
-    graph = GraphStore.load(graph_path)
-    targets = resolve_targets(
-        graph, names=[symbol], qnames=[symbol], files=[symbol]
-    )
-    if not targets:
-        return f"'{symbol}' was not found in the graph. Check the spelling or try a file path."
-
-    report = analyze_impact(graph, targets=targets, max_depth=max_depth)
-
-    target_names = []
-    for t in report.targets[:6]:
-        node = graph.get_node(t)
-        if node:
-            target_names.append(node.qualified_name)
+        report = analyze_impact(graph, targets=targets, max_depth=max_depth)
+        target_names = [
+            n.qualified_name
+            for t in report.targets[:6]
+            if (n := graph.get_node(t)) is not None
+        ]
 
     lines = [
         f"Impact of changing '{symbol}'",
@@ -212,9 +299,9 @@ def list_packs(repo_path: str) -> str:
     if not storage.exists():
         return _NOT_INDEXED_HINT
 
-    from .packs.store import PackStore
+    with _lock:
+        packs = _get_packstore(storage).list()
 
-    packs = PackStore(storage / "packs.sqlite").list()
     if not packs:
         return (
             "No packs defined yet. Run "
@@ -248,21 +335,14 @@ def index_status(repo_path: str) -> str:
             f"{_NOT_INDEXED_HINT}"
         )
 
-    from .store import DEFAULT_COLLECTION, ChunkStore
-
-    store = ChunkStore(location=storage, collection=DEFAULT_COLLECTION)
-    try:
-        chunk_count = store.count()
-    finally:
-        store.close()
+    with _lock:
+        chunk_count = _get_store(storage).count()
+        try:
+            n_packs = len(_get_packstore(storage).list())
+        except Exception:
+            n_packs = 0
 
     graph = "yes" if _graph_path(storage).exists() else "no"
-    try:
-        from .packs.store import PackStore
-        n_packs = len(PackStore(storage / "packs.sqlite").list())
-    except Exception:
-        n_packs = 0
-
     return (
         f"Indexed: {repo_path}\n"
         f"  storage:  {storage}\n"
@@ -294,13 +374,18 @@ def index_repository(repo_path: str, reset: bool = False) -> str:
     from .graph.builder import build_and_save
     from .indexer import index_repo
 
-    result = index_repo(
-        root,
-        storage_path=storage,
-        embedder_cache_dir=_cache_dir(),
-        reset=reset,
-    )
-    graph = build_and_save(root, graph_path=_graph_path(storage))
+    with _lock:
+        # Release our cached read handle so the indexer can take the write lock.
+        _evict_repo(storage)
+        result = index_repo(
+            root,
+            storage_path=storage,
+            embedder_cache_dir=_cache_dir(),
+            reset=reset,
+        )
+        graph = build_and_save(root, graph_path=_graph_path(storage))
+        # Drop the (now stale) graph cache so the next find_impact reloads it.
+        _graphs.pop(str(_graph_path(storage)), None)
 
     return (
         f"Indexed {repo_path}\n"
