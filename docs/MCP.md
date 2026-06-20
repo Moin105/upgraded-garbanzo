@@ -19,22 +19,22 @@ pip install -e .
 
 This installs two console commands:
 
-- `coderchecker` — the CLI (`index`, `ask`, `impact`, `packs`, `review`)
+- `karst` — the CLI (`index`, `ask`, `impact`, `packs`, `review`)
 - `karst-mcp` — the MCP server (this doc)
 
 > **PATH note (Windows):** pip may install the scripts to a `Scripts\` folder
 > that isn't on your PATH. If `karst-mcp` isn't found, use the module form in the
-> configs below: `python -m coderchecker.mcp_server`.
+> configs below: `python -m karst.mcp_server`.
 
 ## 2. Index a repo (one time)
 
 The MCP tools read a prebuilt index. Build it once per repo:
 
 ```bash
-coderchecker index /path/to/your-repo
+karst index /path/to/your-repo
 # optional but recommended — enables find_impact and pack scoping:
-coderchecker graph-index /path/to/your-repo
-coderchecker packs --storage ~/.coderchecker/indexes/your-repo \
+karst graph-index /path/to/your-repo
+karst packs --storage ~/.karst/indexes/your-repo \
   suggest /path/to/your-repo --apply --retag
 ```
 
@@ -68,7 +68,7 @@ If `karst-mcp` isn't on PATH, use:
   "mcpServers": {
     "karst": {
       "command": "python",
-      "args": ["-m", "coderchecker.mcp_server"]
+      "args": ["-m", "karst.mcp_server"]
     }
   }
 }
@@ -97,7 +97,7 @@ Reload Cursor. Settings → MCP should show `karst` as connected.
 ### Continue / Cline / other MCP hosts
 
 Any host that speaks MCP over stdio works. Point it at the command `karst-mcp`
-(or `python -m coderchecker.mcp_server`). No args, no env vars required.
+(or `python -m karst.mcp_server`). No args, no env vars required.
 
 ## 4. Use it
 
@@ -111,7 +111,7 @@ when useful. Examples that trigger them:
 - *"What context packs exist for this repo?"* → `list_packs`.
 
 You can always pass the repo's absolute path; the tools resolve the index from
-`~/.coderchecker/indexes/<repo-name>`.
+`~/.karst/indexes/<repo-name>`.
 
 ---
 
@@ -141,9 +141,9 @@ question, and answers grounded in citations.
 
 ## Troubleshooting
 
-- **"This repo isn't indexed yet."** Run `coderchecker index <path>` (and
+- **"This repo isn't indexed yet."** Run `karst index <path>` (and
   `graph-index` for impact), or call the `index_repository` tool.
-- **`karst-mcp` not found.** Use `python -m coderchecker.mcp_server` in the
+- **`karst-mcp` not found.** Use `python -m karst.mcp_server` in the
   config, or add the pip Scripts dir to PATH.
 - **Host shows no tools.** Fully quit and reopen the host after editing its
   config — most hosts only read MCP config at startup.

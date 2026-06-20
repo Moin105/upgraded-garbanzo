@@ -1,4 +1,4 @@
-"""CLI for `coderchecker packs` — spec §22/§23 made textual.
+"""CLI for `karst packs` — spec §22/§23 made textual.
 
 Verbs:
     packs list                — show every pack in this repo's index

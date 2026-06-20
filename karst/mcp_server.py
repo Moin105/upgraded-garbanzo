@@ -26,7 +26,7 @@ Tools exposed:
   - index_repository   build / refresh the index + graph for a repo
 
 Run it:  karst-mcp           (console script)
-   or:    python -m coderchecker.mcp_server
+   or:    python -m karst.mcp_server
 """
 
 from __future__ import annotations
@@ -55,11 +55,11 @@ mcp = FastMCP("karst")
 def _storage_for(repo_path: str) -> Path:
     root = Path(repo_path).expanduser().resolve()
     slug = root.name or "root"
-    return Path.home() / ".coderchecker" / "indexes" / slug
+    return Path.home() / ".karst" / "indexes" / slug
 
 
 def _cache_dir() -> Path:
-    return Path.home() / ".coderchecker" / "models"
+    return Path.home() / ".karst" / "models"
 
 
 def _graph_path(storage: Path) -> Path:

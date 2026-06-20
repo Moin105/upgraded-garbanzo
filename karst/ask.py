@@ -127,7 +127,7 @@ def _build_user_prompt(question: str, hits: list[SearchHit]) -> str:
             "No chunks were retrieved from the index for this question.\n\n"
             f"Question: {question}\n\n"
             "Tell the user the index is empty or the question matches nothing, "
-            "and recommend re-running `coderchecker index <path>` or rephrasing."
+            "and recommend re-running `karst index <path>` or rephrasing."
         )
 
     parts: list[str] = ["# Retrieved chunks", ""]

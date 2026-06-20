@@ -13,9 +13,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from coderchecker.graph.builder import build_graph
-from coderchecker.graph.impact import analyze_impact, resolve_targets
-from coderchecker.graph.store import EdgeKind, NodeKind, file_node_id
+from karst.graph.builder import build_graph
+from karst.graph.impact import analyze_impact, resolve_targets
+from karst.graph.store import EdgeKind, NodeKind, file_node_id
 
 FIXTURE = Path(__file__).parent / "fixtures" / "graph_repo"
 
@@ -102,7 +102,7 @@ def test_save_and_load_roundtrip(tmp_path: Path) -> None:
     p = tmp_path / "graph.pkl"
     store.save(p)
 
-    from coderchecker.graph.store import GraphStore
+    from karst.graph.store import GraphStore
     loaded = GraphStore.load(p)
     assert loaded.node_count == store.node_count
     assert loaded.edge_count == store.edge_count

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from coderchecker.review.diff import parse_diff
+from karst.review.diff import parse_diff
 
 
 SAMPLE_DIFF = """\

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from coderchecker.embedding_cache import EmbeddingCache
-from coderchecker.manifest import (
+from karst.embedding_cache import EmbeddingCache
+from karst.manifest import (
     FileEntry,
     Manifest,
     file_sha,

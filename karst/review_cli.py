@@ -1,4 +1,4 @@
-"""CLI handler for `coderchecker review`.
+"""CLI handler for `karst review`.
 
 Kept in its own module to avoid bloating cli.py. The CLI dispatcher in
 cli.py calls _cmd_review here.

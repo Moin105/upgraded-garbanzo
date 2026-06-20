@@ -4,11 +4,11 @@ from pathlib import Path
 
 import pytest
 
-from coderchecker.analyze import analyze_repo
-from coderchecker.packs.models import Pack
-from coderchecker.packs.store import PackStore
-from coderchecker.packs.suggest import suggest_packs
-from coderchecker.packs.tagger import compile_packs, tag_relpath
+from karst.analyze import analyze_repo
+from karst.packs.models import Pack
+from karst.packs.store import PackStore
+from karst.packs.suggest import suggest_packs
+from karst.packs.tagger import compile_packs, tag_relpath
 
 
 def test_pack_store_roundtrip(tmp_path: Path) -> None:

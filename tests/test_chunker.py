@@ -4,10 +4,10 @@ from pathlib import Path
 
 import pytest
 
-from coderchecker.analyze import analyze_repo
-from coderchecker.chunker import chunk_file
-from coderchecker.models import ChunkKind
-from coderchecker.parser import ParserRegistry, parse_file
+from karst.analyze import analyze_repo
+from karst.chunker import chunk_file
+from karst.models import ChunkKind
+from karst.parser import ParserRegistry, parse_file
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

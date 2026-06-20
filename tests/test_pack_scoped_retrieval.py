@@ -10,11 +10,11 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
-from coderchecker.analyze import analyze_repo
-from coderchecker.embedder import EmbeddedChunk
-from coderchecker.packs.models import Pack
-from coderchecker.packs.tagger import compile_packs, tag_relpath
-from coderchecker.store import ChunkStore
+from karst.analyze import analyze_repo
+from karst.embedder import EmbeddedChunk
+from karst.packs.models import Pack
+from karst.packs.tagger import compile_packs, tag_relpath
+from karst.store import ChunkStore
 
 FIXTURES = Path(__file__).parent / "fixtures" / "graph_repo"
 DIM = 8

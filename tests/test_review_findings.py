@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from coderchecker.review.findings import (
+from karst.review.findings import (
     FINDINGS_SCHEMA,
     Category,
     Finding,

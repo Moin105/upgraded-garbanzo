@@ -10,10 +10,10 @@ from pathlib import Path
 
 import pytest
 
-from coderchecker.analyze import analyze_repo
-from coderchecker.embedder import EmbeddedChunk
-from coderchecker.models import Chunk
-from coderchecker.store import ChunkStore
+from karst.analyze import analyze_repo
+from karst.embedder import EmbeddedChunk
+from karst.models import Chunk
+from karst.store import ChunkStore
 
 FIXTURES = Path(__file__).parent / "fixtures"
 VECTOR_DIM = 8

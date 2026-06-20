@@ -1,9 +1,9 @@
 """CLI entry point.
 
 Subcommands:
-    coderchecker analyze <path>          # walk + parse + chunk (no storage)
-    coderchecker index <path>            # full ingestion → Qdrant
-    coderchecker ask <question>          # Q&A over an indexed repo
+    karst analyze <path>          # walk + parse + chunk (no storage)
+    karst index <path>            # full ingestion → Qdrant
+    karst ask <question>          # Q&A over an indexed repo
 """
 
 from __future__ import annotations
@@ -33,13 +33,13 @@ from .tokens import estimate_cost
 # projects don't share an index. Phase 1 keeps this in the home dir; in
 # production §34 calls for per-tenant Qdrant collections.
 def _default_storage(path: Path) -> Path:
-    base = Path.home() / ".coderchecker" / "indexes"
+    base = Path.home() / ".karst" / "indexes"
     slug = path.resolve().name or "root"
     return base / slug
 
 
 def _default_cache_dir() -> Path:
-    return Path.home() / ".coderchecker" / "models"
+    return Path.home() / ".karst" / "models"
 
 
 # --------------------------------------------------------------------------- #
@@ -278,11 +278,11 @@ def _print_token_meter(hits, question, *, model_hint: str | None) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="coderchecker",
+        prog="karst",
         description="AI Staff Engineer Agent — Phase 1 (ingest + index + ask).",
     )
     parser.add_argument(
-        "--version", action="version", version=f"coderchecker {__version__}"
+        "--version", action="version", version=f"karst {__version__}"
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -302,7 +302,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Ingest a repo into the Qdrant vector store (walk -> parse -> chunk -> embed -> upsert).",
     )
     p_index.add_argument("path")
-    p_index.add_argument("--storage", help="Qdrant local-storage path (default: ~/.coderchecker/indexes/<repo>).")
+    p_index.add_argument("--storage", help="Qdrant local-storage path (default: ~/.karst/indexes/<repo>).")
     p_index.add_argument("--collection", default=DEFAULT_COLLECTION)
     p_index.add_argument("--embedding-model", default=DEFAULT_MODEL)
     p_index.add_argument("--embedder-cache", help="Where to cache the embedding model weights.")

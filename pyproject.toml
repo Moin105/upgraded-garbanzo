@@ -3,10 +3,32 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "coderchecker"
+name = "karst"
 version = "0.1.0"
-description = "AI Staff Engineer Agent — Repository Analyzer core (tree-sitter parsing + AST-aware chunking)"
+description = "Code context for AI dev tools — graph-grounded, pack-scoped retrieval over MCP. 60% fewer tokens, audit-grade citations."
+readme = "README.md"
 requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "karst" }]
+keywords = [
+    "mcp", "model-context-protocol", "code-search", "rag", "graphrag",
+    "tree-sitter", "code-intelligence", "ai", "llm", "cursor", "claude",
+    "embeddings", "code-review", "impact-analysis",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = [
     "tree-sitter>=0.23",
     "tree-sitter-language-pack>=0.7.3",
@@ -18,6 +40,11 @@ dependencies = [
     "mcp>=1.2",
 ]
 
+[project.urls]
+Homepage = "https://github.com/Moin105/upgraded-garbanzo"
+Repository = "https://github.com/Moin105/upgraded-garbanzo"
+Issues = "https://github.com/Moin105/upgraded-garbanzo/issues"
+
 [project.optional-dependencies]
 anthropic = ["anthropic>=0.39"]
 openai = ["openai>=1.50"]
@@ -27,9 +54,9 @@ dev = [
 ]
 
 [project.scripts]
-coderchecker = "coderchecker.cli:main"
-karst-mcp = "coderchecker.mcp_server:main"
+karst = "karst.cli:main"
+karst-mcp = "karst.mcp_server:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["coderchecker*"]
+include = ["karst*"]

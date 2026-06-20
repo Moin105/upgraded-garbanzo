@@ -14,7 +14,7 @@ REPO = "C:/Users/hp/Byfoods"
 
 async def main() -> None:
     params = StdioServerParameters(
-        command="python", args=["-m", "coderchecker.mcp_server"]
+        command="python", args=["-m", "karst.mcp_server"]
     )
     async with stdio_client(params) as (read, write):
         async with ClientSession(read, write) as session:

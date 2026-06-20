@@ -33,7 +33,7 @@ def add_graph_index_subparser(sub: argparse._SubParsersAction) -> None:
     p.add_argument("path")
     p.add_argument(
         "--storage",
-        help="Where to write the graph (default ~/.coderchecker/indexes/<repo>/graph.pkl).",
+        help="Where to write the graph (default ~/.karst/indexes/<repo>/graph.pkl).",
     )
     p.set_defaults(func=_cmd_graph_index)
 
@@ -50,7 +50,7 @@ def _cmd_graph_index(args: argparse.Namespace) -> int:
             graph_path = graph_path / "graph.pkl"
     else:
         # Mirror the vector-index default layout.
-        base = Path.home() / ".coderchecker" / "indexes" / (root.resolve().name or "root")
+        base = Path.home() / ".karst" / "indexes" / (root.resolve().name or "root")
         graph_path = default_graph_path(base)
 
     print(f"Indexing graph: {root.resolve()}", file=sys.stderr)

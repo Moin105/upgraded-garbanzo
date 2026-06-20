@@ -16,14 +16,14 @@ from typing import Any
 
 import pytest
 
-from coderchecker.analyze import analyze_repo
-from coderchecker.embedder import EmbeddedChunk
-from coderchecker.llm import LLM, LLMResponse
-from coderchecker.models import Chunk
-from coderchecker.review.agent import review_diff
-from coderchecker.review.diff import parse_diff
-from coderchecker.review.findings import Severity
-from coderchecker.store import ChunkStore
+from karst.analyze import analyze_repo
+from karst.embedder import EmbeddedChunk
+from karst.llm import LLM, LLMResponse
+from karst.models import Chunk
+from karst.review.agent import review_diff
+from karst.review.diff import parse_diff
+from karst.review.findings import Severity
+from karst.store import ChunkStore
 
 VECTOR_DIM = 8
 

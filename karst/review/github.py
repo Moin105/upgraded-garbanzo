@@ -157,13 +157,13 @@ def _severity_badge(sev: Severity) -> str:
 
 def _default_summary(findings: list[Finding]) -> str:
     if not findings:
-        return "**coderchecker review:** no findings."
+        return "**karst review:** no findings."
     counts: dict[str, int] = {}
     for f in findings:
         counts[f.severity.value] = counts.get(f.severity.value, 0) + 1
     parts = [f"{n} {sev}" for sev, n in counts.items()]
     return (
-        "**coderchecker review** — "
+        "**karst review** — "
         + ", ".join(parts)
         + ". See inline comments for details."
     )

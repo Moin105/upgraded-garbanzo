@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from coderchecker.state import (
+from karst.state import (
     attach,
     clear_attached,
     detach,
