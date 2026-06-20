@@ -10,9 +10,18 @@ It runs **locally**, returns **context (not answers)** over **MCP**, and never
 calls an LLM itself — so you don't give karst an API key. Your IDE already has
 the model; karst just makes what it reads sharp and cheap.
 
+```bash
+uv tool install karst      # recommended — fast, and puts `karst` on PATH for you
+# or
+pipx install karst         # isolated install, also handles PATH
+# or
+pip install karst          # if `karst` isn't found after, use `python -m karst …`
 ```
-pip install karst
-```
+
+> [`uv`](https://docs.astral.sh/uv/) and `pipx` are the cleanest because they
+> put the `karst` command on your PATH automatically. With plain `pip --user`
+> (notably Microsoft Store Python) the command may not be on PATH — in that case
+> `python -m karst …` always works, no PATH setup required.
 
 ## Why
 
@@ -65,19 +74,22 @@ karst ships an MCP server (`karst-mcp`) exposing five tools — `search_code`,
 `find_impact`, `list_packs`, `index_status`, `index_repository` — over stdio.
 
 **Claude Desktop** (`claude_desktop_config.json`) or **Cursor**
-(`.cursor/mcp.json`):
+(`.cursor/mcp.json`) — pick whichever launcher you have:
 
 ```json
 {
   "mcpServers": {
-    "karst": { "command": "karst-mcp" }
+    "karst": { "command": "uvx", "args": ["--from", "karst", "karst-mcp"] }
   }
 }
 ```
 
+`uvx` needs nothing pre-installed — it fetches and runs karst on demand. Already
+installed it? `{ "command": "karst-mcp" }` works too. No PATH at all? Use
+`{ "command": "python", "args": ["-m", "karst.mcp_server"] }`.
+
 Restart the host, then ask normally — it calls karst's tools when useful and
-gets back scoped, cited context. Full setup, including the `python -m
-karst.mcp_server` fallback, is in [docs/MCP.md](docs/MCP.md).
+gets back scoped, cited context. Full setup is in [docs/MCP.md](docs/MCP.md).
 
 ## How it works
 

@@ -13,19 +13,26 @@ the model; karst just feeds it the right slice of the repo.
 ## 1. Install
 
 ```bash
-pip install karst
+uv tool install karst      # recommended — fast, handles PATH for you
+# or
+pipx install karst         # isolated, also handles PATH
+# or
+pip install karst          # fallback (see PATH note below)
 ```
 
-(Or, from a clone of this repo for development: `pip install -e .`)
+(From a clone of this repo for development: `pip install -e .`)
 
 This installs two console commands:
 
 - `karst` — the CLI (`index`, `ask`, `impact`, `packs`, `review`)
 - `karst-mcp` — the MCP server (this doc)
 
-> **PATH note (Windows):** pip may install the scripts to a `Scripts\` folder
-> that isn't on your PATH. If `karst-mcp` isn't found, use the module form in the
-> configs below: `python -m karst.mcp_server`.
+> **PATH note.** `uv tool install` / `pipx` put these commands on your PATH for
+> you. Plain `pip install --user` (notably Microsoft Store Python) drops the
+> scripts in a `Scripts\` folder that often isn't on PATH — then `karst` /
+> `karst-mcp` won't be found. Two PATH-free options that always work:
+> `python -m karst …` (CLI) and `python -m karst.mcp_server` (server). The MCP
+> configs below include launchers that need no PATH at all.
 
 ## 2. Index a repo (one time)
 
@@ -52,28 +59,22 @@ Edit `claude_desktop_config.json`:
 - **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
-```json
-{
-  "mcpServers": {
-    "karst": {
-      "command": "karst-mcp"
-    }
-  }
-}
-```
-
-If `karst-mcp` isn't on PATH, use:
+Use whichever launcher you have (all three are equivalent):
 
 ```json
 {
   "mcpServers": {
-    "karst": {
-      "command": "python",
-      "args": ["-m", "karst.mcp_server"]
-    }
+    "karst": { "command": "uvx", "args": ["--from", "karst", "karst-mcp"] }
   }
 }
 ```
+
+- **`uvx` (recommended)** — needs nothing pre-installed; fetches and runs karst
+  on demand. Requires [`uv`](https://docs.astral.sh/uv/).
+- **Installed already?** `{ "command": "karst-mcp" }` (works if it's on PATH —
+  it is after `uv tool install` / `pipx`).
+- **No PATH at all?** `{ "command": "python", "args": ["-m", "karst.mcp_server"] }`
+  — the most universal option (just needs `python` on PATH).
 
 Restart Claude Desktop. You'll see a 🔌 / tools icon — `karst` and its 5 tools
 should be listed.
@@ -86,14 +87,14 @@ projects):
 ```json
 {
   "mcpServers": {
-    "karst": {
-      "command": "karst-mcp"
-    }
+    "karst": { "command": "uvx", "args": ["--from", "karst", "karst-mcp"] }
   }
 }
 ```
 
-Reload Cursor. Settings → MCP should show `karst` as connected.
+(Same three launcher options as above — swap in `karst-mcp` or
+`python -m karst.mcp_server` if you prefer.) Reload Cursor. Settings → MCP should
+show `karst` as connected.
 
 ### Continue / Cline / other MCP hosts
 
