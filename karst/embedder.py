@@ -58,8 +58,11 @@ class Embedder:
             self._dim = len(next(iter(self._model.embed(["x"]))))
         return self._dim
 
-    def embed_texts(self, texts: list[str]) -> list[list[float]]:
-        return [list(v) for v in self._model.embed(texts)]
+    def embed_texts(self, texts: list[str], *, batch_size: int = DEFAULT_BATCH) -> list[list[float]]:
+        # Cap FastEmbed's internal batch. Its default (256) builds a ~3 GB
+        # attention buffer per step (256 × heads × 512² × 4 bytes), which OOMs
+        # on ordinary laptops. 32 keeps peak allocation ~400 MB.
+        return [list(v) for v in self._model.embed(texts, batch_size=batch_size)]
 
     def embed_chunks(
         self,
