@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "coderchecker"
+version = "0.1.0"
+description = "AI Staff Engineer Agent — Repository Analyzer core (tree-sitter parsing + AST-aware chunking)"
+requires-python = ">=3.10"
+dependencies = [
+    "tree-sitter>=0.23",
+    "tree-sitter-language-pack>=0.7.3",
+    "pathspec>=0.12",
+    "fastembed>=0.4",
+    "qdrant-client>=1.12",
+    "unidiff>=0.7.5",
+    "networkx>=3.2",
+]
+
+[project.optional-dependencies]
+anthropic = ["anthropic>=0.39"]
+openai = ["openai>=1.50"]
+llm = ["anthropic>=0.39", "openai>=1.50"]
+dev = [
+    "pytest>=8",
+]
+
+[project.scripts]
+coderchecker = "coderchecker.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["coderchecker*"]

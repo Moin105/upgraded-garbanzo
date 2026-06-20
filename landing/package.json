@@ -1,0 +1,9 @@
+{
+  "name": "karst-landing",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Public marketing site for karst — code context for AI dev tools.",
+  "scripts": {
+    "build": "echo no build needed"
+  }
+}

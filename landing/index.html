@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>karst — code context for AI dev tools</title>
+<meta name="description" content="karst indexes your repo, packs it into small token-efficient bundles, and serves them over MCP to Claude, Cursor, and any AI dev tool." />
+
+<meta property="og:title" content="karst — code context for AI dev tools" />
+<meta property="og:description" content="MCP-native code context. 343s to 2.3s incremental reindex, $0.019 per query on Sonnet 4.6, 60% fewer tokens." />
+<meta property="og:image" content="/og-image.svg" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="karst — code context for AI dev tools" />
+<meta name="twitter:description" content="MCP-native code context. 343s to 2.3s incremental reindex, $0.019 per query on Sonnet 4.6, 60% fewer tokens." />
+<meta name="twitter:image" content="/og-image.svg" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Inter', 'system-ui', 'sans-serif'],
+          mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+        },
+      },
+    },
+  };
+</script>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131c;
+    --text: #f8fafc;
+    --text-dim: #94a3b8;
+    --accent: #818cf8;
+    --accent-2: #34d399;
+    --border: #1f2937;
+    --code-bg: #0f172a;
+  }
+  html, body { background: var(--bg); color: var(--text); }
+  body { font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  .surface { background: var(--surface); border: 1px solid var(--border); }
+  .text-dim { color: var(--text-dim); }
+  .accent { color: var(--accent); }
+  .accent-2 { color: var(--accent-2); }
+  .bg-accent { background: var(--accent); }
+  .bg-accent-2 { background: var(--accent-2); }
+  .border-default { border-color: var(--border); }
+  .code-bg { background: var(--code-bg); }
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px; border-radius: 999px;
+    background: rgba(129,140,248,0.08);
+    border: 1px solid rgba(129,140,248,0.25);
+    color: var(--accent); font-size: 12px; letter-spacing: 0.02em;
+  }
+  .btn-primary {
+    background: var(--accent); color: #0a0a0f; font-weight: 600;
+    padding: 12px 18px; border-radius: 8px; display: inline-flex; align-items: center; gap: 8px;
+    transition: filter .15s ease;
+  }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .btn-ghost {
+    border: 1px solid var(--border); color: var(--text);
+    padding: 12px 18px; border-radius: 8px; display: inline-flex; align-items: center; gap: 8px;
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .btn-ghost:hover { border-color: var(--accent); background: rgba(129,140,248,0.06); }
+  .grid-bg {
+    background-image:
+      radial-gradient(ellipse at top, rgba(129,140,248,0.08), transparent 60%),
+      linear-gradient(rgba(129,140,248,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(129,140,248,0.04) 1px, transparent 1px);
+    background-size: auto, 48px 48px, 48px 48px;
+  }
+  .stat-num { color: var(--accent-2); }
+  .num-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 28px; }
+  .step-num {
+    font-family: 'JetBrains Mono', monospace; color: var(--accent);
+    font-size: 13px; letter-spacing: 0.1em;
+  }
+  input[type=email] {
+    background: var(--code-bg); border: 1px solid var(--border);
+    color: var(--text); padding: 12px 14px; border-radius: 8px;
+    width: 100%; font-family: inherit; font-size: 15px;
+  }
+  input[type=email]:focus { outline: none; border-color: var(--accent); }
+  a { color: inherit; }
+  a.link-accent { color: var(--accent); }
+  a.link-accent:hover { text-decoration: underline; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- Logo SVG (reused inline below) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="karst-logo" viewBox="0 0 40 40">
+      <!-- 3 satellite circles, white -->
+      <line x1="20" y1="20" x2="6"  y2="8"  stroke="#ffffff" stroke-width="1.5" />
+      <line x1="20" y1="20" x2="34" y2="10" stroke="#ffffff" stroke-width="1.5" />
+      <line x1="20" y1="20" x2="20" y2="34" stroke="#ffffff" stroke-width="1.5" />
+      <circle cx="6"  cy="8"  r="3" fill="#ffffff" />
+      <circle cx="34" cy="10" r="3" fill="#ffffff" />
+      <circle cx="20" cy="34" r="3" fill="#ffffff" />
+      <!-- center, purple accent -->
+      <circle cx="20" cy="20" r="5.5" fill="#818cf8" stroke="#ffffff" stroke-width="1.5" />
+    </symbol>
+  </defs>
+</svg>
+
+<header class="border-b border-default">
+  <div class="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between">
+    <a href="/" class="flex items-center gap-2.5">
+      <svg width="28" height="28" aria-hidden="true"><use href="#karst-logo" /></svg>
+      <span class="text-lg font-semibold tracking-tight">karst</span>
+    </a>
+    <nav class="flex items-center gap-6 text-sm text-dim">
+      <a href="#how" class="hover:text-white">How it works</a>
+      <a href="#install" class="hover:text-white">Install</a>
+      <a href="https://github.com/karst-dev/karst" class="hover:text-white">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<!-- Hero -->
+<section class="grid-bg">
+  <div class="max-w-6xl mx-auto px-5 pt-20 pb-24 text-center">
+    <span class="pill mono">MCP-native &middot; Apache 2.0 &middot; Self-hosted</span>
+    <h1 class="mt-6 text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight leading-tight">
+      code context<br />for AI dev tools
+    </h1>
+    <p class="mt-5 text-dim max-w-2xl mx-auto text-lg">
+      karst indexes your repo, packs it into small token-efficient bundles, and serves them over MCP
+      to Claude, Cursor, and any AI dev tool. Self-hosted, deterministic, cost-aware.
+    </p>
+    <div class="mt-8 flex items-center justify-center gap-3 flex-wrap">
+      <a href="#install" class="btn-primary">Install free</a>
+      <a href="https://github.com/karst-dev/karst" class="btn-ghost">View on GitHub</a>
+    </div>
+  </div>
+</section>
+
+<!-- Numbers -->
+<section class="max-w-6xl mx-auto px-5 pb-8">
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="num-card">
+      <div class="text-4xl md:text-5xl font-semibold mono stat-num">343s &rarr; 2.3s</div>
+      <div class="mt-3 text-sm text-dim">Re-index after first run. Incremental, content-addressed.</div>
+    </div>
+    <div class="num-card">
+      <div class="text-4xl md:text-5xl font-semibold mono stat-num">$0.019</div>
+      <div class="mt-3 text-sm text-dim">Avg cost per query on Sonnet 4.6. Shown before each call.</div>
+    </div>
+    <div class="num-card">
+      <div class="text-4xl md:text-5xl font-semibold mono stat-num">60%</div>
+      <div class="mt-3 text-sm text-dim">Token reduction with packs vs. raw file dumping.</div>
+    </div>
+  </div>
+</section>
+
+<!-- How it works -->
+<section id="how" class="max-w-6xl mx-auto px-5 py-20">
+  <h2 class="text-3xl font-semibold tracking-tight">How it works</h2>
+  <p class="text-dim mt-2 max-w-2xl">Three steps. No vector DB to babysit, no embeddings drift, no surprise bills.</p>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
+    <div class="surface rounded-xl p-6">
+      <div class="step-num">01 / INDEX</div>
+      <h3 class="text-lg font-semibold mt-3">Parse the repo</h3>
+      <p class="text-dim mt-2 text-sm leading-relaxed">
+        karst walks your tree, parses each file with tree-sitter, and writes a content-addressed
+        index of symbols, calls, and imports. The first pass takes 343s on a 2M-line repo;
+        subsequent runs are 2.3s because only changed blobs are re-parsed.
+      </p>
+    </div>
+    <div class="surface rounded-xl p-6">
+      <div class="step-num">02 / PACK</div>
+      <h3 class="text-lg font-semibold mt-3">Group into packs</h3>
+      <p class="text-dim mt-2 text-sm leading-relaxed">
+        Files that change together and call each other get grouped into packs &mdash; small,
+        named bundles like <span class="mono accent">auth</span> or
+        <span class="mono accent">billing-stripe</span>. <code class="mono">karst packs suggest</code> proposes
+        them; you review, tag, and apply. Packs are the unit of context.
+      </p>
+    </div>
+    <div class="surface rounded-xl p-6">
+      <div class="step-num">03 / SERVE</div>
+      <h3 class="text-lg font-semibold mt-3">Serve over MCP</h3>
+      <p class="text-dim mt-2 text-sm leading-relaxed">
+        karst exposes packs as MCP resources. Claude Desktop, Cursor, and any MCP client can pull
+        just the pack they need &mdash; 60% fewer tokens than dumping raw files, with the exact cost
+        printed before each call.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- Install -->
+<section id="install" class="max-w-6xl mx-auto px-5 pb-20">
+  <h2 class="text-3xl font-semibold tracking-tight">Install in 60 seconds</h2>
+  <p class="text-dim mt-2 max-w-2xl">Python 3.10+. Works on macOS, Linux, WSL.</p>
+  <div class="code-bg rounded-xl mt-6 p-5 mono text-sm overflow-x-auto border border-default">
+<pre class="text-slate-200"><span class="text-dim"># 1. install</span>
+pip install karst
+
+<span class="text-dim"># 2. index your repo (one-time, ~5 min on a large codebase)</span>
+karst index ./my-repo
+
+<span class="text-dim"># 3. suggest packs, review, apply</span>
+karst packs --storage ~/.karst/my-repo suggest ./my-repo --apply --retag
+
+<span class="text-dim"># 4. ask anything &mdash; cost is printed before the call</span>
+karst ask <span class="accent-2">"How does auth work?"</span> --storage ~/.karst/my-repo</pre>
+  </div>
+  <p class="mt-4 text-sm text-dim">
+    Or wire it into Claude Desktop:
+    <a href="https://github.com/karst-dev/karst#claude-desktop" class="link-accent">claude_desktop_config.json setup &rarr;</a>
+  </p>
+</section>
+
+<!-- Waitlist -->
+<section class="max-w-6xl mx-auto px-5 pb-24">
+  <div class="surface rounded-2xl p-8 md:p-12">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+      <div>
+        <h2 class="text-2xl md:text-3xl font-semibold tracking-tight">Get early access</h2>
+        <p class="text-dim mt-3 max-w-md">
+          We're rolling out hosted packs, team sync, and a usage-aware MCP gateway. Drop your email
+          and we'll send a build invite when your slot opens.
+        </p>
+      </div>
+      <form id="waitlist-form" class="flex flex-col sm:flex-row gap-3" novalidate>
+        <input id="waitlist-email" type="email" name="email" placeholder="you@company.com" required autocomplete="email" />
+        <button type="submit" class="btn-primary justify-center whitespace-nowrap">Get early access</button>
+      </form>
+    </div>
+    <p id="waitlist-msg" class="mt-4 text-sm" role="status" aria-live="polite"></p>
+  </div>
+</section>
+
+<footer class="border-t border-default">
+  <div class="max-w-6xl mx-auto px-5 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-dim">
+    <div class="flex items-center gap-2.5">
+      <svg width="20" height="20" aria-hidden="true"><use href="#karst-logo" /></svg>
+      <span>karst &middot; Apache 2.0</span>
+    </div>
+    <div class="flex items-center gap-5">
+      <a href="https://github.com/karst-dev/karst" class="hover:text-white">GitHub</a>
+      <a href="https://twitter.com/karst_dev" class="hover:text-white">Twitter</a>
+      <a href="mailto:hello@karst.dev" class="hover:text-white">hello@karst.dev</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    // Set window.KARST_API_URL via a <script> tag before this script runs to
+    // point the form at a non-default admin instance. Falls back to the
+    // public admin endpoint.
+    var API_URL = window.KARST_API_URL || 'https://admin.karst.dev/api/waitlist';
+
+    var form = document.getElementById('waitlist-form');
+    var input = document.getElementById('waitlist-email');
+    var msg = document.getElementById('waitlist-msg');
+
+    function setMsg(text, ok) {
+      msg.textContent = text;
+      msg.style.color = ok ? 'var(--accent-2)' : '#f87171';
+    }
+
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var email = (input.value || '').trim();
+      if (!email || email.indexOf('@') === -1) {
+        setMsg('Enter a valid email.', false);
+        return;
+      }
+      var btn = form.querySelector('button');
+      btn.disabled = true;
+      var prev = btn.textContent;
+      btn.textContent = 'Sending...';
+      try {
+        var res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email, source: 'landing' }),
+        });
+        if (!res.ok) throw new Error('bad status');
+        setMsg("You're on the list.", true);
+        form.reset();
+      } catch (err) {
+        setMsg('Try again.', false);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = prev;
+      }
+    });
+  })();
+</script>
+
+</body>
+</html>
