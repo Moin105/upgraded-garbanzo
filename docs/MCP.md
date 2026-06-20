@@ -13,9 +13,10 @@ the model; karst just feeds it the right slice of the repo.
 ## 1. Install
 
 ```bash
-# from a clone of this repo
-pip install -e .
+pip install karst
 ```
+
+(Or, from a clone of this repo for development: `pip install -e .`)
 
 This installs two console commands:
 
