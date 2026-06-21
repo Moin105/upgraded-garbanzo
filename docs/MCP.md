@@ -46,6 +46,11 @@ karst packs --storage ~/.karst/indexes/your-repo \
   suggest /path/to/your-repo --apply --retag
 ```
 
+> The `--storage` folder is the **basename of the repo path**: indexing
+> `/path/to/myapp` stores it at `~/.karst/indexes/myapp` (the two must match).
+> Simpler: run `karst quickstart /path/to/your-repo`, which does all three steps
+> and prints the exact storage path.
+
 (You can also do this from inside the host by calling the `index_repository`
 tool — handy for small repos. For large repos prefer the CLI so you don't block
 the host on a long call.)

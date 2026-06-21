@@ -421,7 +421,11 @@ def _cmd_examples(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="karst",
-        description="AI Staff Engineer Agent — Phase 1 (ingest + index + ask).",
+        description=(
+            "Code context for AI dev tools — graph-grounded, pack-scoped, "
+            "cited retrieval over your codebase. Run `karst quickstart` to "
+            "get started, or `karst examples` for a cheatsheet."
+        ),
     )
     parser.add_argument(
         "--version", action="version", version=f"karst {__version__}"

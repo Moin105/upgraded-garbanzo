@@ -93,6 +93,24 @@ installed it? `{ "command": "karst-mcp" }` works too. No PATH at all? Use
 Restart the host, then ask normally — it calls karst's tools when useful and
 gets back scoped, cited context. Full setup is in [docs/MCP.md](docs/MCP.md).
 
+## Guides
+
+New here? Start with whichever fits you:
+
+- **[Why karst?](docs/WHY.md)** — what it is and what it's for, in plain
+  language. Read this first if you're not sure what problem it solves.
+- **[Quickstart](docs/QUICKSTART.md)** — zero to asking real questions in 5
+  minutes, no API key, with real output.
+- **[For vibe coders](docs/FOR-VIBE-CODERS.md)** — use karst from Cursor /
+  Claude Desktop with **no CLI commands** — you just chat.
+- **[Connect your AI tool](docs/CONNECT.md)** — copy-paste MCP setup for every
+  client: Claude Desktop, Claude Code, Cursor, Windsurf, VS Code, Zed,
+  JetBrains, plus the web apps.
+- **[Cookbook](docs/COOKBOOK.md)** — real scenarios (onboarding, blast radius,
+  cutting token cost, reviewing a diff) with copy-paste commands.
+- **[MCP setup](docs/MCP.md)** · **[Architecture](docs/ARCHITECTURE.md)** —
+  reference and internals.
+
 ## How it works
 
 1. **Index** — tree-sitter splits every function, class and method into an
@@ -113,8 +131,10 @@ local mode, sqlite caches — no Docker, no daemon).
 
 Live: AST chunking (6 languages), call/import graph + impact analysis,
 pack-scoped retrieval, token + cost meter, incremental indexing + embedding
-cache, diff code review, and the MCP server. Coming next: hosted indexing,
-team-shared pack libraries, a GitHub PR review bot.
+cache, diff code review with inline PR posting (`review --pr --post-to-pr`), and
+the MCP server over both stdio and remote Streamable-HTTP (`karst-mcp --http`).
+Coming next: hosted indexing, team-shared pack libraries, an autonomous GitHub
+PR review bot, and OAuth for browser connectors (claude.ai / ChatGPT).
 
 ## License
 
