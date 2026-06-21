@@ -25,8 +25,11 @@ Tools exposed:
   - index_status       whether a repo is indexed and how big the index is
   - index_repository   build / refresh the index + graph for a repo
 
-Run it:  karst-mcp           (console script)
+Run it:  karst-mcp                 (stdio — local hosts: Claude Desktop, Cursor)
    or:    python -m karst.mcp_server
+Remote:  karst-mcp --http          (Streamable HTTP — for hosted/remote hosts)
+         Set KARST_MCP_TOKEN to require an `Authorization: Bearer <token>` header
+         before exposing it beyond localhost.
 """
 
 from __future__ import annotations
@@ -398,9 +401,102 @@ def index_repository(repo_path: str, reset: bool = False) -> str:
     )
 
 
+# --------------------------------------------------------------------------- #
+# Transports
+# --------------------------------------------------------------------------- #
+
+def _build_http_app(token: str | None):
+    """The Streamable-HTTP ASGI app, optionally gated by a bearer token.
+
+    GET /healthz stays open (liveness probes for Fly/Render/etc.); everything
+    else requires `Authorization: Bearer <token>` when a token is configured.
+    """
+    app = mcp.streamable_http_app()
+    if not token:
+        return app
+
+    import hmac
+
+    from starlette.responses import JSONResponse, PlainTextResponse
+
+    expected = f"Bearer {token}"
+
+    class _BearerAuth:
+        def __init__(self, inner):
+            self._inner = inner
+
+        async def __call__(self, scope, receive, send):
+            if scope.get("type") == "http":
+                path = scope.get("path", "")
+                if scope.get("method") == "GET" and path in ("/healthz", "/health"):
+                    await PlainTextResponse("ok")(scope, receive, send)
+                    return
+                headers = dict(scope.get("headers") or [])
+                provided = headers.get(b"authorization", b"").decode("latin-1")
+                if not hmac.compare_digest(provided, expected):
+                    await JSONResponse({"error": "unauthorized"}, status_code=401)(
+                        scope, receive, send
+                    )
+                    return
+            await self._inner(scope, receive, send)
+
+    return _BearerAuth(app)
+
+
+def _run_http(host: str, port: int) -> None:
+    import os
+    import sys
+
+    import uvicorn
+
+    token = os.environ.get("KARST_MCP_TOKEN")
+    if not token:
+        print(
+            "[karst-mcp] WARNING: KARST_MCP_TOKEN is not set — the HTTP server is "
+            "UNAUTHENTICATED. Anyone who can reach it can query your indexes. Set "
+            "KARST_MCP_TOKEN to require a bearer token before exposing it.",
+            file=sys.stderr,
+        )
+    mcp.settings.host = host
+    mcp.settings.port = port
+    app = _build_http_app(token)
+    print(
+        f"[karst-mcp] Streamable HTTP on http://{host}:{port}"
+        f"{mcp.settings.streamable_http_path}  (auth: {'on' if token else 'OFF'})",
+        file=sys.stderr,
+    )
+    uvicorn.run(app, host=host, port=port, log_level=str(mcp.settings.log_level).lower())
+
+
 def main() -> None:
-    """Console entry point. Serves over stdio for MCP hosts."""
-    mcp.run()
+    """Console entry point.
+
+    Default: stdio (local hosts — Claude Desktop, Cursor, …).
+    With --http (or KARST_MCP_HTTP=1): Streamable HTTP for remote/hosted hosts.
+    Gate the HTTP server with KARST_MCP_TOKEN when exposing it beyond localhost.
+    """
+    import argparse
+    import os
+
+    parser = argparse.ArgumentParser(prog="karst-mcp", description="karst MCP server.")
+    parser.add_argument(
+        "--http",
+        action="store_true",
+        help="Serve over Streamable HTTP instead of stdio (for remote hosts).",
+    )
+    parser.add_argument("--host", default=os.environ.get("KARST_MCP_HOST", "0.0.0.0"))
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.environ.get("KARST_MCP_PORT", os.environ.get("PORT", "8080"))),
+    )
+    args = parser.parse_args()
+
+    http = args.http or os.environ.get("KARST_MCP_HTTP", "").lower() in ("1", "true", "yes")
+    if http:
+        _run_http(args.host, args.port)
+    else:
+        mcp.run()  # stdio
 
 
 if __name__ == "__main__":

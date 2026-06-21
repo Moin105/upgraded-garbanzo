@@ -141,6 +141,39 @@ instead:
 Net effect on a real 246-file repo (Byfoods): ~60% fewer input tokens per
 question, and answers grounded in citations.
 
+## Remote / hosted mode (claude.ai, ChatGPT, shared servers)
+
+By default karst-mcp speaks **stdio** — for local hosts that launch it as a
+subprocess. To connect a **browser/cloud host** (claude.ai, ChatGPT) or share
+one server with a team, run it over **Streamable HTTP** instead:
+
+```bash
+# on a machine that has the repos indexed (it reads ~/.karst/indexes locally)
+export KARST_MCP_TOKEN="a-long-random-secret"
+karst-mcp --http                  # host 0.0.0.0, port $PORT or 8080
+```
+
+- Endpoint: `https://your-host/mcp`  ·  health check: `GET /healthz` (open).
+- **Auth:** every request needs `Authorization: Bearer $KARST_MCP_TOKEN`. If you
+  don't set the token it runs unauthenticated and warns loudly — don't do that
+  off localhost.
+- **Put it behind HTTPS** (your platform's TLS, or a reverse proxy). `$PORT` is
+  honored, so it deploys as-is to Fly / Render / Railway.
+
+**Important:** the server reads indexes from its **own disk**
+(`~/.karst/indexes/<repo>`). A hosted server can't see your laptop's files — so
+index the repos **on the server** (run `karst index` / `karst quickstart` there,
+or mount a volume that has them).
+
+**Connecting clients:**
+- Clients that support a remote MCP URL + custom headers → point them at
+  `https://your-host/mcp` with the `Authorization: Bearer …` header.
+- stdio-only clients (e.g. Claude Desktop) can bridge to it:
+  `npx mcp-remote https://your-host/mcp --header "Authorization: Bearer $TOKEN"`.
+- claude.ai / ChatGPT's built-in connector UIs currently expect **OAuth**; the
+  bearer-token server works today for header-capable clients and the
+  `mcp-remote` bridge — native OAuth is the next step on the roadmap.
+
 ## Troubleshooting
 
 - **"This repo isn't indexed yet."** Run `karst index <path>` (and
