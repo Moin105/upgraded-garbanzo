@@ -41,32 +41,34 @@ Measured on a real 246-file NestJS + Next.js repo: 906 chunks indexed, re-index
 
 ## Quickstart (CLI)
 
+> **`karst` command not found?** Your Python Scripts dir isn't on PATH (common
+> with Microsoft Store Python). Everything below works the same with
+> **`python -m karst …`** — no PATH setup. (Or install via `uv`/`pipx`, which put
+> `karst` on PATH for you.)
+
 ```bash
-# 1. index a repo (incremental + cached after the first run)
-karst index ./my-repo
+cd your-project
 
-# 2. build the call/import graph (enables impact analysis)
-karst graph-index ./my-repo
+# one command: index + call/import graph + suggested packs
+karst quickstart                 #  or:  python -m karst quickstart
 
-# 3. auto-suggest context packs and tag the index
-karst packs --storage ~/.karst/indexes/my-repo \
-  suggest ./my-repo --apply --retag
-
-# 4. ask — retrieval is pack-scoped and the token cost is printed
-karst ask "How does checkout charge the user?" \
-  --storage ~/.karst/indexes/my-repo
+# ask questions about the code (defaults to this folder's index)
+karst ask "how does checkout charge the user?" --no-llm    # cited code, no API key
+karst ask -i                     # interactive: ask many questions
 
 # what breaks if I change a function?
-karst impact --target checkout \
-  --graph-path ~/.karst/indexes/my-repo/graph.pkl
+karst impact --target checkout --graph-path ~/.karst/indexes/your-project/graph.pkl
 
 # review a diff with severity-tagged, cited findings
-karst review --staged --storage ~/.karst/indexes/my-repo
+karst review --staged --storage ~/.karst/indexes/your-project
+
+karst examples                   # a copy-paste cheatsheet of everything
 ```
 
-`karst ask` needs an LLM key (`ANTHROPIC_API_KEY` or `OPENAI_API_KEY`), or pass
-`--no-llm` to get the raw cited chunks. The **MCP server below needs no key** —
-your IDE supplies the model.
+`karst quickstart` prints the exact follow-up commands with your index path
+filled in. `karst ask` writes an LLM answer when `ANTHROPIC_API_KEY` /
+`OPENAI_API_KEY` is set; otherwise add `--no-llm` for cited chunks (no key). The
+**MCP server below needs no key either** — your IDE supplies the model.
 
 ## Use it from your IDE (MCP)
 

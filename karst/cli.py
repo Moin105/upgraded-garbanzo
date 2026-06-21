@@ -236,16 +236,16 @@ def _answer_once(
 
 
 def _cmd_ask(args: argparse.Namespace) -> int:
-    if not args.storage:
+    # Default to the current folder's index (same convention as `index` /
+    # `quickstart`), so `cd project && karst ask "…"` works without --storage.
+    storage = Path(args.storage) if args.storage else _default_storage(Path("."))
+    if not storage.exists():
         print(
-            "error: --storage is required for `ask` (point at the same path used "
-            "when indexing, or set it explicitly).",
+            f"error: no index found at {storage}.\n"
+            "Run `karst quickstart` (or `karst index`) in your project first, "
+            "or pass --storage <path>.",
             file=sys.stderr,
         )
-        return 2
-    storage = Path(args.storage)
-    if not storage.exists():
-        print(f"error: storage path does not exist: {storage}", file=sys.stderr)
         return 2
 
     cache = Path(args.embedder_cache) if args.embedder_cache else _default_cache_dir()
