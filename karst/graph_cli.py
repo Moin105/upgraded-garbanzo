@@ -30,7 +30,7 @@ def add_graph_index_subparser(sub: argparse._SubParsersAction) -> None:
         "graph-index",
         help="Build the knowledge graph for a repo (File/Function nodes, IMPORTS/CALLS/CONTAINS edges).",
     )
-    p.add_argument("path")
+    p.add_argument("path", nargs="?", default=".", help="Repo path (default: current folder).")
     p.add_argument(
         "--storage",
         help="Where to write the graph (default ~/.karst/indexes/<repo>/graph.pkl).",

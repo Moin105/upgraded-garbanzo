@@ -430,7 +430,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_analyze = sub.add_parser(
         "analyze", help="Walk a repo and emit AST-aware chunks (no storage)."
     )
-    p_analyze.add_argument("path")
+    p_analyze.add_argument("path", nargs="?", default=".", help="Repo path (default: current folder).")
     p_analyze.add_argument("--jsonl", action="store_true")
     p_analyze.add_argument("--include-code", action="store_true")
     p_analyze.add_argument("--stats", action="store_true")
@@ -441,7 +441,7 @@ def build_parser() -> argparse.ArgumentParser:
         "index",
         help="Ingest a repo into the Qdrant vector store (walk -> parse -> chunk -> embed -> upsert).",
     )
-    p_index.add_argument("path")
+    p_index.add_argument("path", nargs="?", default=".", help="Repo path (default: current folder).")
     p_index.add_argument("--storage", help="Qdrant local-storage path (default: ~/.karst/indexes/<repo>).")
     p_index.add_argument("--collection", default=DEFAULT_COLLECTION)
     p_index.add_argument("--embedding-model", default=DEFAULT_MODEL)
@@ -503,7 +503,7 @@ def build_parser() -> argparse.ArgumentParser:
         "quickstart",
         help="One command to get a repo ready: index + graph + suggested packs, then prints what to try.",
     )
-    p_qs.add_argument("path")
+    p_qs.add_argument("path", nargs="?", default=".", help="Repo path (default: current folder).")
     p_qs.add_argument("--storage", help="Storage path (default: ~/.karst/indexes/<repo>).")
     p_qs.add_argument("--full", action="store_true", help="Force a full re-index (ignore the SHA manifest).")
     p_qs.set_defaults(func=_cmd_quickstart)
