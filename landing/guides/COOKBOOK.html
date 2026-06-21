@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cookbook — karst guides</title>
+<meta name="description" content="Cookbook — a karst guide. Code context for AI dev tools." />
+<meta property="og:title" content="Cookbook — karst" />
+<meta property="og:description" content="Cookbook — a karst guide." />
+<meta property="og:image" content="/og-image.svg" />
+<meta property="og:type" content="article" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+<style>
+  :root {
+    --bg: #0a0a0f; --surface: #13131c; --text: #f8fafc; --text-dim: #94a3b8;
+    --accent: #818cf8; --accent-2: #34d399; --border: #1f2937; --code-bg: #0f172a;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  html, body { background: var(--bg); color: var(--text); margin: 0; }
+  body { font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  .text-dim { color: var(--text-dim); }
+  .accent { color: var(--accent); }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+  header.site {
+    position: sticky; top: 0; z-index: 20;
+    background: rgba(10,10,15,0.85); backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+  }
+  .bar { max-width: 860px; margin: 0 auto; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; letter-spacing: -0.01em; }
+  nav.site { display: flex; gap: 22px; font-size: 14px; }
+  nav.site a { color: var(--text-dim); text-decoration: none; }
+  nav.site a:hover { color: #fff; }
+
+  main { max-width: 860px; margin: 0 auto; padding: 32px 20px 80px; }
+  .back { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); text-decoration: none; font-size: 14px; }
+  .back:hover { text-decoration: underline; }
+
+  /* Prose */
+  .doc { margin-top: 22px; line-height: 1.7; color: #e2e8f0; }
+  .doc h1 { font-size: 2.2rem; line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 .4em; color: #fff; }
+  .doc h2 { font-size: 1.5rem; letter-spacing: -0.01em; margin: 2.2em 0 .7em; padding-top: .6em; border-top: 1px solid var(--border); color: #fff; }
+  .doc h3 { font-size: 1.18rem; margin: 1.8em 0 .5em; color: #fff; }
+  .doc h4 { font-size: 1rem; margin: 1.5em 0 .4em; color: #fff; }
+  .doc h1, .doc h2, .doc h3, .doc h4 { scroll-margin-top: 80px; }
+  .doc p, .doc li { color: #cbd5e1; }
+  .doc a { color: var(--accent); text-decoration: none; }
+  .doc a:hover { text-decoration: underline; }
+  .doc strong { color: #fff; font-weight: 600; }
+  .doc ul, .doc ol { padding-left: 1.4em; }
+  .doc li { margin: .35em 0; }
+  .doc hr { border: none; border-top: 1px solid var(--border); margin: 2.5em 0; }
+  .doc img { max-width: 100%; }
+
+  .doc code {
+    font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: .88em;
+    background: rgba(129,140,248,0.12); color: #c7d2fe;
+    padding: .15em .4em; border-radius: 5px;
+  }
+  .doc pre {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px 18px; overflow-x: auto; margin: 1.2em 0;
+  }
+  .doc pre code { background: none; color: #e2e8f0; padding: 0; font-size: .85rem; line-height: 1.6; }
+
+  .doc blockquote {
+    margin: 1.2em 0; padding: 2px 18px; border-left: 3px solid var(--accent);
+    background: rgba(129,140,248,0.06); border-radius: 0 8px 8px 0;
+  }
+  .doc blockquote p { color: var(--text-dim); }
+
+  .doc table { width: 100%; border-collapse: collapse; margin: 1.4em 0; font-size: .92rem; display: block; overflow-x: auto; }
+  .doc th, .doc td { border: 1px solid var(--border); padding: 9px 12px; text-align: left; vertical-align: top; }
+  .doc th { background: var(--surface); color: #fff; font-weight: 600; }
+  .doc tr:nth-child(even) td { background: rgba(255,255,255,0.015); }
+
+  .doc-loading { color: var(--text-dim); font-size: 14px; }
+
+  .other-guides { margin-top: 56px; padding-top: 28px; border-top: 1px solid var(--border); }
+  .other-guides h4 { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim); margin: 0 0 14px; font-family: 'JetBrains Mono', monospace; }
+  .og-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+  .og-grid a { display: block; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; text-decoration: none; color: #e2e8f0; font-size: 14px; transition: border-color .15s ease, background .15s ease; }
+  .og-grid a:hover { border-color: var(--accent); background: rgba(129,140,248,0.05); }
+
+  footer.site { border-top: 1px solid var(--border); }
+  .foot { max-width: 860px; margin: 0 auto; padding: 26px 20px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; font-size: 13px; color: var(--text-dim); }
+  .foot a { color: var(--text-dim); text-decoration: none; }
+  .foot a:hover { color: #fff; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="karst-logo" viewBox="0 0 40 40">
+    <polygon points="20,2.5 36,20 20,37.5 4,20" fill="#818cf8" fill-opacity="0.07" stroke="#c7d2fe" stroke-opacity="0.5" stroke-width="1" stroke-linejoin="round"/>
+    <g stroke="#4a3420" stroke-width="0.6" stroke-linejoin="round">
+      <polygon points="20,7 31,14 19,19" fill="#c39a6b"/>
+      <polygon points="31,14 28,30 19,19" fill="#a3744a"/>
+      <polygon points="28,30 16,33 19,19" fill="#8f6840"/>
+      <polygon points="16,33 9,24 19,19" fill="#a87c54"/>
+      <polygon points="9,24 11,12 19,19" fill="#b9895c"/>
+      <polygon points="11,12 20,7 19,19" fill="#cca57a"/>
+    </g>
+    <circle cx="24" cy="12.5" r="1.7" fill="#34d399"/>
+    <polygon points="20,7 31,14 28,30 16,33 9,24 11,12" fill="none" stroke="#3a2a18" stroke-width="1" stroke-linejoin="round"/>
+  </symbol>
+</defs></svg>
+
+<header class="site">
+  <div class="bar">
+    <a href="/" class="brand"><svg width="26" height="26" aria-hidden="true"><use href="#karst-logo" /></svg><span>karst</span></a>
+    <nav class="site">
+      <a href="/">Home</a>
+      <a href="/#guides">Guides</a>
+      <a href="/#install">Install</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <a class="back" href="/#guides">&larr; All guides</a>
+  <article id="doc" class="doc" data-md="COOKBOOK.md"><p class="doc-loading">Loading…</p></article>
+
+  <div class="other-guides">
+    <h4>More guides</h4>
+    <div class="og-grid">
+      <a href="/guides/WHY.html">Why karst?</a>
+      <a href="/guides/QUICKSTART.html">Quickstart</a>
+      <a href="/guides/FOR-VIBE-CODERS.html">For vibe coders</a>
+      <a href="/guides/CONNECT.html">Connect your AI tool</a>
+      <a href="/guides/COOKBOOK.html">Cookbook</a>
+      <a href="/guides/MCP.html">MCP &amp; internals</a>
+    </div>
+  </div>
+</main>
+
+<footer class="site">
+  <div class="foot">
+    <span class="brand"><svg width="18" height="18" aria-hidden="true"><use href="#karst-logo" /></svg> karst · Apache 2.0</span>
+    <span style="display:flex; gap:18px;">
+      <a href="/">Home</a>
+      <a href="https://pypi.org/project/karst/" target="_blank" rel="noopener">PyPI</a>
+      <a href="mailto:hello@karst.dev">hello@karst.dev</a>
+    </span>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+  (function () {
+    var el = document.getElementById('doc');
+    var md = el.getAttribute('data-md');
+
+    function slug(s) {
+      // GitHub-style heading id (matches the in-doc anchor links).
+      return s.replace(/[^\p{L}\p{N}\p{M}\p{Pc}\p{Pd} ]/gu, '').replace(/ /g, '-').toLowerCase();
+    }
+
+    fetch(md).then(function (r) {
+      if (!r.ok) throw new Error('fetch ' + r.status);
+      return r.text();
+    }).then(function (text) {
+      marked.setOptions({ gfm: true, breaks: false });
+      el.innerHTML = marked.parse(text);
+
+      // Title from the first H1.
+      var h1 = el.querySelector('h1');
+      if (h1) document.title = h1.textContent.trim() + ' — karst';
+
+      // Stable heading ids so the in-doc anchor links resolve.
+      el.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach(function (h) { h.id = slug(h.textContent); });
+
+      // Rewrite relative links: *.md -> *.html (same /guides dir), README -> home.
+      el.querySelectorAll('a[href]').forEach(function (a) {
+        var href = a.getAttribute('href');
+        if (!href) return;
+        if (/^https?:\/\//i.test(href)) { a.target = '_blank'; a.rel = 'noopener'; return; }
+        if (href.charAt(0) === '#') return; // in-page anchor
+        var base = href.replace(/^.*\//, ''); // drop any directory part
+        if (/README\.md/i.test(base)) { a.setAttribute('href', '/'); return; }
+        var m = base.match(/^([^#]+)\.md(#.*)?$/i);
+        if (m) a.setAttribute('href', m[1] + '.html' + (m[2] || ''));
+      });
+
+      // If we arrived with a hash, jump to it now that ids exist.
+      if (location.hash) {
+        var t = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+        if (t) t.scrollIntoView();
+      }
+    }).catch(function () {
+      el.innerHTML = '<p class="doc-loading">Couldn’t load this guide. <a href="/">Back to home</a>.</p>';
+    });
+  })();
+</script>
+
+</body>
+</html>
