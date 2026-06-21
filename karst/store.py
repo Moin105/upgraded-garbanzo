@@ -11,6 +11,7 @@ re-indexing the same commit upserts in place rather than duplicating.
 from __future__ import annotations
 
 import hashlib
+import re
 import uuid
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -25,6 +26,16 @@ PackTagger = Callable[[str], list[str]]
 
 DEFAULT_COLLECTION = "code_chunks"
 DEFAULT_BATCH = 64
+
+# Re-ranking: how many dense candidates to pull before fusing with the lexical
+# score, and the RRF constant (60 is the standard default).
+_RERANK_POOL = 40
+_RRF_K = 60
+_STOPWORDS = frozenset(
+    "the a an how do does is are was were what where which who why when to of in "
+    "on for and or with this that it its into from by as be can could should i "
+    "we you they my our your get set use using make".split()
+)
 
 
 @dataclass
@@ -179,7 +190,17 @@ class ChunkStore:
         *,
         limit: int = 8,
         pack_ids: list[str] | None = None,
+        query_text: str | None = None,
     ) -> list[SearchHit]:
+        """Vector search, optionally re-ranked.
+
+        When `query_text` is given, we over-fetch a candidate pool and fuse the
+        dense (cosine) ranking with a lexical identifier/path score via
+        Reciprocal Rank Fusion. Dense embeddings under-weight exact identifiers
+        ("MCP server" → mcp_server.py); the lexical signal fixes that. It's
+        model-free — no extra weights, negligible latency — so the precision
+        gain lets callers keep top_k (and therefore tokens) small.
+        """
         from qdrant_client.http import models as qm
 
         query_filter: qm.Filter | None = None
@@ -195,12 +216,15 @@ class ChunkStore:
                 ]
             )
 
+        # Over-fetch a pool to re-rank when we have the query text.
+        fetch = max(limit, _RERANK_POOL) if query_text else limit
+
         try:
             res = self._client.query_points(
                 collection_name=self._collection,
                 query=vector,
                 query_filter=query_filter,
-                limit=limit,
+                limit=fetch,
                 with_payload=True,
             )
             points = res.points
@@ -209,7 +233,7 @@ class ChunkStore:
                 collection_name=self._collection,
                 query_vector=vector,
                 query_filter=query_filter,
-                limit=limit,
+                limit=fetch,
                 with_payload=True,
             )
 
@@ -219,7 +243,10 @@ class ChunkStore:
             if chunk is None:
                 continue
             hits.append(SearchHit(chunk=chunk, score=float(p.score)))
-        return hits
+
+        if query_text and len(hits) > 1:
+            hits = _rrf_rerank(hits, query_text)
+        return hits[:limit]
 
     def count(self) -> int:
         return self._client.count(self._collection, exact=True).count
@@ -240,6 +267,52 @@ def _chunk_point_id(chunk_id: str) -> str:
     """
     digest = hashlib.sha1(chunk_id.encode("utf-8")).digest()[:16]
     return str(uuid.UUID(bytes=digest))
+
+
+def _query_terms(query_text: str) -> list[str]:
+    return [
+        t for t in re.split(r"[^a-z0-9]+", query_text.lower())
+        if len(t) >= 3 and t not in _STOPWORDS
+    ]
+
+
+def _lexical_score(chunk: Chunk, terms: list[str]) -> float:
+    """Identifier/path-biased keyword score. Names matter most (they're the
+    user's actual handle on the code), then the file path, then the body."""
+    name_toks = set(re.split(r"[^a-z0-9]+", (chunk.qualified_name + " " + chunk.name).lower()))
+    path_toks = set(re.split(r"[^a-z0-9]+", chunk.file_relpath.lower()))
+    body = chunk.code[:2000].lower()
+    score = 0.0
+    for t in terms:
+        if t in name_toks:
+            score += 3.0
+        elif t in path_toks:
+            score += 2.0
+        elif t in body:
+            score += 0.5
+    return score
+
+
+def _rrf_rerank(hits: list[SearchHit], query_text: str) -> list[SearchHit]:
+    """Fuse the dense ranking (current order) with a lexical ranking via
+    Reciprocal Rank Fusion. No-op when the query has no lexical signal, so
+    pure-semantic queries are never hurt."""
+    terms = _query_terms(query_text)
+    if not terms:
+        return hits
+
+    lex_scores = [_lexical_score(h.chunk, terms) for h in hits]
+    if max(lex_scores) <= 0:
+        return hits  # nothing matched lexically — keep the dense order
+
+    dense_rank = {id(h): i for i, h in enumerate(hits)}
+    lex_order = sorted(range(len(hits)), key=lambda i: lex_scores[i], reverse=True)
+    lex_rank = {id(hits[idx]): r for r, idx in enumerate(lex_order)}
+
+    def rrf(h: SearchHit) -> float:
+        return 1.0 / (_RRF_K + dense_rank[id(h)]) + 1.0 / (_RRF_K + lex_rank[id(h)])
+
+    return sorted(hits, key=rrf, reverse=True)
 
 
 def _chunk_payload(chunk: Chunk) -> dict:

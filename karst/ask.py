@@ -79,7 +79,7 @@ def ask(
     store = ChunkStore(location=storage_path, collection=collection)
     try:
         (query_vec,) = embedder.embed_texts([question])
-        seed_hits = store.search(query_vec, limit=top_k, pack_ids=pack_ids)
+        seed_hits = store.search(query_vec, limit=top_k, pack_ids=pack_ids, query_text=question)
 
         if graph_path is not None:
             hits = _expand_with_graph(seed_hits, graph_path, store, extra=graph_extra)

@@ -2,6 +2,28 @@
 
 All notable changes to **karst**. This project uses semantic-ish versioning.
 
+## 0.2.3
+
+**Hybrid retrieval — better ranking, same token budget.**
+
+- `search` now fuses the dense (semantic) ranking with a model-free lexical
+  identifier/path score via **Reciprocal Rank Fusion (RRF)**. Pure-vector search
+  under-weights exact names — asking "how does the **MCP server** expose tools?"
+  used to rank an unrelated `CompiledPack` chunk #1; now `mcp_server.py` is #1.
+- Zero extra model, negligible latency: karst over-fetches a small candidate
+  pool and re-ranks in-process. The precision gain means you can keep `top_k`
+  (and therefore tokens) **small** instead of over-fetching to compensate.
+- Safe by construction: the re-rank is a **no-op** when the query has no lexical
+  signal, so purely conceptual questions are never penalised.
+
+## 0.2.2
+
+- Cap stored code per chunk (8000 chars) so a single giant generated/spec
+  function can't become an 11k-token chunk that dominates retrieval cost. The
+  citation still spans the full definition.
+- Honest token meter: counts each chunk at its truncated prompt size, so the
+  printed token/cost estimate matches what's actually sent to the LLM.
+
 ## 0.2.1
 
 - `karst ask` now defaults to the **current folder's** index, so

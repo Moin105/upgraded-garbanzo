@@ -200,7 +200,7 @@ def search_code(
         embedder = _get_embedder()
         store = _get_store(storage)
         (vec,) = embedder.embed_texts([query])
-        hits = store.search(vec, limit=limit, pack_ids=packs or None)
+        hits = store.search(vec, limit=limit, pack_ids=packs or None, query_text=query)
 
     if not hits:
         scope = f" in packs {packs}" if packs else ""
