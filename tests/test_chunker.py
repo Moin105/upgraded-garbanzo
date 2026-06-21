@@ -79,3 +79,23 @@ def test_analyze_repo_streams_results() -> None:
     assert {"python", "typescript"}.issubset(langs)
     total_chunks = sum(len(r.chunks) for r in results)
     assert total_chunks >= 6
+
+
+def test_giant_function_is_capped(tmp_path: Path, registry: ParserRegistry) -> None:
+    """A huge function must not become one enormous chunk (retrieval-cost guard)."""
+    from karst.chunker import _MAX_CHUNK_CHARS
+
+    body = "\n".join(f"    x{i} = {i}" for i in range(4000))  # ~48k chars
+    big = tmp_path / "big.py"
+    big.write_text(f"def huge():\n{body}\n", encoding="utf-8")
+
+    parsed = parse_file(big, repo_root=tmp_path, registry=registry)
+    assert parsed is not None
+    chunks = chunk_file(parsed)
+    huge = next(c for c in chunks if c.qualified_name == "huge")
+
+    # code is capped (cap + a short truncation marker), but the line range still
+    # spans the whole definition so the citation is honest.
+    assert len(huge.code) <= _MAX_CHUNK_CHARS + 200
+    assert "truncated" in huge.code
+    assert huge.end_line - huge.start_line > 1000

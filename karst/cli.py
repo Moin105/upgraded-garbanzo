@@ -17,7 +17,7 @@ from pathlib import Path
 
 from . import __version__
 from .analyze import analyze_repo
-from .ask import ask
+from .ask import ask, _MAX_CHUNK_CHARS
 from .embedder import DEFAULT_MODEL
 from .graph_cli import add_graph_index_subparser, add_impact_subparser
 from .indexer import index_repo
@@ -301,7 +301,9 @@ def _print_token_meter(hits, question, *, model_hint: str | None) -> None:
     """
     from .tokens import DEFAULT_CHARS_PER_TOKEN
 
-    chars = sum(len(h.chunk.code) for h in hits) + len(question) + 800  # system prompt
+    # Count what the prompt ACTUALLY sends: ask truncates each chunk to
+    # _MAX_CHUNK_CHARS, so a single huge function doesn't inflate the estimate.
+    chars = sum(min(len(h.chunk.code), _MAX_CHUNK_CHARS) for h in hits) + len(question) + 800
     in_tok = max(1, chars // DEFAULT_CHARS_PER_TOKEN)
 
     if model_hint and "claude" in model_hint:

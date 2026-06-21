@@ -32,6 +32,12 @@ from .parser import ParsedFile
 
 _SIGNATURE_MAX_BYTES = 240
 
+# Cap the stored code per chunk. A few files (generated code, doc/spec builders)
+# contain one enormous function; left whole it becomes a single 10k+ token chunk
+# that dominates retrieval cost and crowds out real code. The chunk's line range
+# still spans the full definition, so the citation points at the complete source.
+_MAX_CHUNK_CHARS = 8000
+
 
 def chunk_file(parsed: ParsedFile) -> list[Chunk]:
     """Extract AST-aware chunks from a parsed file."""
@@ -126,11 +132,17 @@ def _emit_chunk(
 
     start_byte = node.start_byte()
     end_byte = node.end_byte()
-    code_bytes = parsed.source[start_byte:end_byte]
-    code = code_bytes.decode("utf-8", errors="replace")
-
     start_point = node.start_position()
     end_point = node.end_position()
+
+    code = parsed.source[start_byte:end_byte].decode("utf-8", errors="replace")
+    if len(code) > _MAX_CHUNK_CHARS:
+        omitted = code[_MAX_CHUNK_CHARS:].count("\n")
+        code = (
+            code[:_MAX_CHUNK_CHARS]
+            + f"\n… (truncated — {omitted} more lines; full source at "
+            f"{parsed.relpath}:{start_point.row + 1})"
+        )
 
     return Chunk(
         file_relpath=parsed.relpath,
