@@ -1,5 +1,7 @@
 # karst
 
+<!-- mcp-name: io.github.moin105/karst -->
+
 **Code context for AI dev tools.** karst sits between your repo and any AI
 tool — Cursor, Claude Desktop, a custom agent — and feeds it the *right* slice
 of the codebase: graph-grounded, pack-scoped, and cited to `file:line`. The

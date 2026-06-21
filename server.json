@@ -1,0 +1,26 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.moin105/karst",
+  "title": "karst",
+  "description": "Code context for AI dev tools — graph-grounded, pack-scoped, cited retrieval over your codebase. Runs locally; no API key needed.",
+  "version": "0.2.4",
+  "websiteUrl": "https://pypi.org/project/karst/",
+  "repository": {
+    "url": "https://github.com/Moin105/upgraded-garbanzo",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "karst",
+      "version": "0.2.4",
+      "runtimeHint": "uvx",
+      "runtimeArguments": [
+        { "type": "named", "name": "--from", "value": "karst" },
+        { "type": "positional", "valueHint": "command", "value": "karst-mcp" }
+      ],
+      "transport": { "type": "stdio" }
+    }
+  ]
+}

@@ -2,6 +2,14 @@
 
 All notable changes to **karst**. This project uses semantic-ish versioning.
 
+## 0.2.4
+
+- Listed on the **official MCP Registry** (`io.github.moin105/karst`): added a
+  `server.json` manifest and the `mcp-name` ownership marker so MCP clients can
+  discover and install karst directly.
+- `karst --version` now reports the real installed version (derived from package
+  metadata) — fixes the 0.2.3 wheel mislabeling itself `0.2.2`.
+
 ## 0.2.3
 
 **Hybrid retrieval — better ranking, same token budget.**
