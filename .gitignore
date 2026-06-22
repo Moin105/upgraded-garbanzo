@@ -45,3 +45,8 @@ Thumbs.db
 
 # Logs
 *.log
+
+# MCP registry publisher (local tooling)
+mcp-publisher.exe
+login.log
+publish.log

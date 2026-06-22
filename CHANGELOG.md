@@ -2,9 +2,9 @@
 
 All notable changes to **karst**. This project uses semantic-ish versioning.
 
-## 0.2.4
+## 0.2.5
 
-- Listed on the **official MCP Registry** (`io.github.moin105/karst`): added a
+- Listed on the **official MCP Registry** (`io.github.Moin105/karst`): added a
   `server.json` manifest and the `mcp-name` ownership marker so MCP clients can
   discover and install karst directly.
 - `karst --version` now reports the real installed version (derived from package

@@ -1,6 +1,6 @@
 # karst
 
-<!-- mcp-name: io.github.moin105/karst -->
+<!-- mcp-name: io.github.Moin105/karst -->
 
 **Code context for AI dev tools.** karst sits between your repo and any AI
 tool — Cursor, Claude Desktop, a custom agent — and feeds it the *right* slice

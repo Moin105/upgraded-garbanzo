@@ -7,5 +7,5 @@ try:
     # drift from the published package again.
     __version__ = _pkg_version("karst")
 except PackageNotFoundError:  # running from a source tree with no install metadata
-    __version__ = "0.2.4"
+    __version__ = "0.2.5"
 
