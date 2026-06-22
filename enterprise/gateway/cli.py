@@ -50,6 +50,27 @@ def main(argv: list[str] | None = None) -> int:
     p_usage.add_argument("--team")
     p_usage.add_argument("--days", type=int, default=30)
 
+    # team pack library
+    p_packs = sub.add_parser("packs", help="Manage the team's shared pack library.")
+    packs_sub = p_packs.add_subparsers(dest="packs_command", required=True)
+    pp_pub = packs_sub.add_parser("publish", help="Publish a pack definition (auto-versioned).")
+    pp_pub.add_argument("--team", required=True)
+    pp_pub.add_argument("--name", required=True)
+    pp_pub.add_argument("--glob", action="append", required=True, dest="globs",
+                        help="Glob scope (repeatable), e.g. --glob 'src/auth/**'.")
+    pp_pub.add_argument("--desc", default="")
+    pp_list = packs_sub.add_parser("list", help="List the team's packs.")
+    pp_list.add_argument("--team", required=True)
+    pp_pull = packs_sub.add_parser("pull", help="Show how to recreate a team pack locally.")
+    pp_pull.add_argument("--team", required=True)
+    pp_pull.add_argument("--name", required=True)
+    pp_pull.add_argument("--version", type=int)
+
+    # serve the gateway
+    p_serve = sub.add_parser("serve", help="Run the gateway (karst MCP + per-key auth + metering).")
+    p_serve.add_argument("--host", default="0.0.0.0")
+    p_serve.add_argument("--port", type=int, default=8080)
+
     args = parser.parse_args(argv)
     db = Path(args.db) if args.db else _default_db()
     _ensure_parent(db)
@@ -95,6 +116,42 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         finally:
             log.close()
+
+    if args.command == "packs":
+        from .packs import PackRegistry
+
+        reg = PackRegistry(db)
+        try:
+            if args.packs_command == "publish":
+                p = reg.publish(args.team, args.name, args.globs, description=args.desc)
+                print(f"Published '{p.name}' v{p.version} for team '{p.team_id}'  (globs: {', '.join(p.globs)})")
+                return 0
+            if args.packs_command == "list":
+                rows = reg.list_packs(args.team)
+                if not rows:
+                    print("No packs in this team's library yet.")
+                    return 0
+                print(f"{'NAME':<24} {'VER':>3}  {'GLOBS':<40} DESCRIPTION")
+                for p in rows:
+                    print(f"{p.name:<24} {p.version:>3}  {','.join(p.globs):<40} {p.description}")
+                return 0
+            if args.packs_command == "pull":
+                p = reg.get(args.team, args.name, version=args.version)
+                if p is None:
+                    print("No such pack.")
+                    return 1
+                print(f"# Team pack '{p.name}' v{p.version}. Recreate it on your local index:")
+                glob_args = " ".join(f"--glob '{g}'" for g in p.globs)
+                print(f"karst packs create {p.name} {glob_args}")
+                return 0
+        finally:
+            reg.close()
+
+    if args.command == "serve":
+        from .serve import serve as _serve
+
+        _serve(host=args.host, port=args.port, db=db)
+        return 0
 
     return 2
 

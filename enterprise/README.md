@@ -50,10 +50,11 @@ audited**, and access is **scoped**.
    `gateway/keys.py` (per-team API keys, hashed, revocable) +
    `gateway/usage.py` (metering + audit log) + `gateway/middleware.py`
    (ASGI auth + usage logging that wraps the MCP app). Tested.
-2. **Serve** — compose the gateway in front of the karst MCP app; a
-   `karst-enterprise serve` entry point. Multi-repo, multi-team.
-3. **Team pack libraries** — publish/pull shared packs across a team (a pack
-   registry with versions), so curation is shared, not repeated.
+2. **Serve** ✅ — `gateway/serve.py` composes the gateway in front of karst's
+   real MCP app (`mcp.streamable_http_app()` wrapped by `GatewayAuth`);
+   `python -m enterprise.gateway.cli serve`.
+3. **Team pack libraries** ✅ — `gateway/packs.py`: publish/pull **versioned**
+   shared pack definitions per team, so curation is done once, not per-dev.
 4. **RBAC + SSO** — scopes per key today; SAML/OIDC + per-repo access policy
    next.
 5. **Self-hosted deploy** — Docker / compose, Postgres backend, on-prem.
@@ -72,9 +73,19 @@ audited**, and access is **scoped**.
 ## Try it
 
 ```bash
-# create a team API key (shown once)
+# 1. create a team API key (shown once)
 python -m enterprise.gateway.cli keys add --team acme --label "CI bot"
-python -m enterprise.gateway.cli keys list --team acme
+
+# 2. curate a shared pack once; the whole team can pull it
+python -m enterprise.gateway.cli packs publish --team acme --name auth \
+    --glob 'src/auth/**' --glob 'src/login/**' --desc "auth core"
+python -m enterprise.gateway.cli packs list --team acme
+python -m enterprise.gateway.cli packs pull --team acme --name auth   # prints the local recreate cmd
+
+# 3. run the authenticated, metered MCP gateway for the org
+python -m enterprise.gateway.cli serve --host 0.0.0.0 --port 8080
+
+# 4. see what the team spent
 python -m enterprise.gateway.cli usage --team acme
 ```
 

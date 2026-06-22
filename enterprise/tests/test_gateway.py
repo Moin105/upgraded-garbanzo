@@ -124,3 +124,55 @@ def test_middleware_auth_and_metering(tmp_path):
     # 3) open health path -> 200 without a key
     sent = _run_asgi(gw, {"type": "http", "method": "GET", "path": "/healthz", "headers": []})
     assert sent[0]["status"] == 200
+
+
+# ---- team pack library -----------------------------------------------------
+
+def test_pack_registry_versions(tmp_path):
+    from enterprise.gateway.packs import PackRegistry
+
+    reg = PackRegistry(tmp_path / "p.db")
+    v1 = reg.publish("acme", "auth", ["src/auth/**"], description="auth core")
+    v2 = reg.publish("acme", "auth", ["src/auth/**", "src/login/**"], description="auth + login")
+    assert v1.version == 1 and v2.version == 2          # auto-incrementing, non-destructive
+    assert reg.get("acme", "auth").version == 2          # latest by default
+    assert reg.get("acme", "auth", version=1).globs == ("src/auth/**",)
+    assert [p.version for p in reg.history("acme", "auth")] == [2, 1]
+
+
+def test_pack_registry_list_is_latest_per_name_and_team_scoped(tmp_path):
+    from enterprise.gateway.packs import PackRegistry
+
+    reg = PackRegistry(tmp_path / "p.db")
+    reg.publish("acme", "auth", ["a/**"])
+    reg.publish("acme", "auth", ["a/**", "b/**"])   # v2
+    reg.publish("acme", "billing", ["pay/**"])
+    reg.publish("other", "secret", ["x/**"])         # different team
+
+    acme = reg.list_packs("acme")
+    assert {p.name for p in acme} == {"auth", "billing"}
+    assert next(p for p in acme if p.name == "auth").version == 2   # only the latest
+    assert reg.list_packs("other") and reg.list_packs("other")[0].name == "secret"
+
+
+def test_pack_registry_validation(tmp_path):
+    from enterprise.gateway.packs import PackRegistry
+
+    reg = PackRegistry(tmp_path / "p.db")
+    with pytest.raises(ValueError):
+        reg.publish("acme", "", ["a/**"])
+    with pytest.raises(ValueError):
+        reg.publish("acme", "auth", [])
+
+
+def test_serve_build_app_smoke(tmp_path):
+    # The gateway wraps karst's real MCP app — needs the MCP/HTTP deps.
+    pytest.importorskip("mcp")
+    pytest.importorskip("starlette")
+    from enterprise.gateway.serve import build_app
+
+    app, keys, usage = build_app(tmp_path / "g.db")
+    assert callable(app)                # ASGI app (GatewayAuth instance)
+    assert keys.list_keys() == []       # fresh db, no keys yet
+    keys.close()
+    usage.close()
