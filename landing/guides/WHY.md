@@ -84,7 +84,6 @@ before changing code: **"what else breaks if I touch this?"**
 4. **Serve** — results go back to you (CLI) or to your AI tool (over MCP),
    always cited to `file:line`.
 
-For the deeper design, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ---
 

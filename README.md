@@ -113,8 +113,7 @@ New here? Start with whichever fits you:
   go to the cloud.
 - **[Cookbook](docs/COOKBOOK.md)** — real scenarios (onboarding, blast radius,
   cutting token cost, reviewing a diff) with copy-paste commands.
-- **[MCP setup](docs/MCP.md)** · **[Architecture](docs/ARCHITECTURE.md)** —
-  reference and internals.
+- **[MCP setup](docs/MCP.md)** — connect karst to any MCP client.
 
 ## How it works
 
