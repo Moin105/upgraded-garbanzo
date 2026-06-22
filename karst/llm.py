@@ -227,9 +227,15 @@ def local_llm(model: str | None = None, base_url: str | None = None) -> LLM:
     """An OpenAI-compatible client pointed at a LOCAL model server (Ollama by
     default). Needs no real API key and makes no outbound internet calls — the
     whole ask loop stays on the machine, so IP-sensitive teams can use it."""
+    url = base_url or os.environ.get("KARST_LLM_BASE_URL") or DEFAULT_LOCAL_BASE_URL
+    # base_url is operator config (not caller input), but guard the scheme so a
+    # typo/mistake can't point the client at file:// or another odd protocol.
+    # We deliberately allow localhost/private hosts — that's the whole point.
+    if not url.startswith(("http://", "https://")):
+        raise ValueError("KARST_LLM_BASE_URL must start with http:// or https://")
     return OpenAILLM(
         model=model or os.environ.get("KARST_LLM_MODEL") or DEFAULT_LOCAL_MODEL,
-        base_url=base_url or os.environ.get("KARST_LLM_BASE_URL") or DEFAULT_LOCAL_BASE_URL,
+        base_url=url,
         api_key=os.environ.get("KARST_LLM_API_KEY") or "local",
         provider="local",
         force_json=False,
