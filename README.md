@@ -108,6 +108,9 @@ New here? Start with whichever fits you:
 - **[Connect your AI tool](docs/CONNECT.md)** — copy-paste MCP setup for every
   client: Claude Desktop, Claude Code, Cursor, Windsurf, VS Code, Zed,
   JetBrains, plus the web apps.
+- **[Self-hosted & air-gapped](docs/SELF-HOSTED.md)** — run karst *and* the AI
+  answers fully on your machine with a local model. For teams whose code can't
+  go to the cloud.
 - **[Cookbook](docs/COOKBOOK.md)** — real scenarios (onboarding, blast radius,
   cutting token cost, reviewing a diff) with copy-paste commands.
 - **[MCP setup](docs/MCP.md)** · **[Architecture](docs/ARCHITECTURE.md)** —

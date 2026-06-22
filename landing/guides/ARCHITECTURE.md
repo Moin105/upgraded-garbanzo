@@ -58,7 +58,14 @@ karst is three pieces that talk over HTTPS. None of them share a database direct
 
 ## Privacy
 
-What we collect via CLI ingest:
+> **Status: not implemented in the shipped CLI.** As of the current release the
+> karst package sends **no telemetry at all** — it imports no HTTP client and
+> makes zero `/api/ingest/*` calls (the dashboard merely *exposes* those
+> endpoints for if/when telemetry is added). The table below is the
+> privacy-by-design spec telemetry **would** follow if it's ever shipped:
+> anonymous, opt-out, and never touching your code.
+
+What telemetry would collect, if it were enabled:
 
 | Endpoint | Data | Notes |
 |---|---|---|
@@ -75,4 +82,8 @@ What we **do not** collect:
 
 Emails enter the system **only** on explicit user action: waitlist signup on the landing page, or feedback submission from inside the CLI / docs site. Those tables (`waitlist`, `feedback`) are the only PII in `karst.db`.
 
-`KARST_TELEMETRY=0` disables every `/api/ingest/*` call. The CLI works fully offline aside from model calls.
+Today the CLI's only network activity is the one-time embedding-model download
+and whichever LLM you explicitly opt into — nothing else. If opt-out telemetry
+is ever added, `KARST_TELEMETRY=0` will disable it; until then there is nothing
+to disable. The engine runs fully offline aside from that one model download
+(see [SELF-HOSTED.md](SELF-HOSTED.md)).

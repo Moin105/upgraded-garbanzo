@@ -21,7 +21,7 @@ from .ask import ask, _MAX_CHUNK_CHARS
 from .embedder import DEFAULT_MODEL
 from .graph_cli import add_graph_index_subparser, add_impact_subparser
 from .indexer import index_repo
-from .llm import DEFAULT_ANTHROPIC_MODEL, DEFAULT_OPENAI_MODEL, LLMNotConfigured
+from .llm import DEFAULT_ANTHROPIC_MODEL, DEFAULT_OPENAI_MODEL, LLMNotConfigured, default_llm
 from .packs_cli import add_packs_subparser
 from .review_cli import add_review_subparser
 from .state import clear_attached, load_state
@@ -183,6 +183,13 @@ def _answer_once(
     """Run one question end-to-end and print retrieval + answer. May raise
     LLMNotConfigured (callers decide whether to abort or keep going)."""
     pack_ids = _resolve_pack_ids(args, storage)
+    # Build the LLM explicitly only when the user asked for a specific provider/
+    # model (incl. --llm local). Otherwise leave it to ask()'s env-based default
+    # (which also honors KARST_LLM_PROVIDER=local). May raise LLMNotConfigured,
+    # which the callers below already handle.
+    llm_obj = None
+    if not args.no_llm and (args.llm or args.model):
+        llm_obj = default_llm(preferred=args.llm, model=args.model)
     result = ask(
         question,
         storage_path=storage,
@@ -190,6 +197,7 @@ def _answer_once(
         embedding_model=args.embedding_model,
         embedder_cache_dir=cache,
         top_k=args.top_k,
+        llm=llm_obj,
         use_llm=not args.no_llm,
         graph_path=graph_path,
         graph_extra=args.graph_extra,
@@ -484,6 +492,18 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-llm",
         action="store_true",
         help="Skip LLM synthesis; print the top-k retrieved chunks instead.",
+    )
+    p_ask.add_argument(
+        "--llm",
+        choices=["anthropic", "openai", "local"],
+        help="LLM provider for the written answer. 'local' uses a self-hosted "
+        "OpenAI-compatible server (Ollama/vLLM) so nothing leaves your machine. "
+        "Default: auto-detected from env.",
+    )
+    p_ask.add_argument(
+        "--model",
+        help="Model name for the answer LLM (e.g. 'qwen2.5-coder' for a local "
+        "Ollama model). Default: the provider's default.",
     )
     p_ask.add_argument(
         "--graph",

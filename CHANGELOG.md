@@ -2,6 +2,20 @@
 
 All notable changes to **karst**. This project uses semantic-ish versioning.
 
+## 0.2.6
+
+**Run fully on-prem — for teams whose code can't go to the cloud.**
+
+- New **`local` LLM provider**: point karst's answers at a self-hosted,
+  OpenAI-compatible server (Ollama / vLLM / LM Studio). `karst ask "…" --llm
+  local --model qwen2.5-coder`, or set `KARST_LLM_PROVIDER=local`. No API key,
+  nothing leaves the machine.
+- `default_llm` is now env-aware (`KARST_LLM_PROVIDER` / `KARST_LLM_BASE_URL` /
+  `KARST_LLM_MODEL`); structured output parses leniently for local models that
+  don't honour strict JSON mode.
+- New guide: **[Self-hosted & air-gapped](docs/SELF-HOSTED.md)** — local-model
+  setup, the network-egress breakdown, and how to run with no internet at all.
+
 ## 0.2.5
 
 - Listed on the **official MCP Registry** (`io.github.Moin105/karst`): added a
