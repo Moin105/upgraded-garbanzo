@@ -395,10 +395,39 @@ karst ask <span class="accent-2">"How does auth work?"</span></pre>
             <p class="text-sm leading-relaxed"><span class="text-white font-medium">Deploy in minutes.</span> <span class="text-dim">Docker Compose + PostgreSQL, air-gappable, no telemetry, source you can audit.</span></p>
           </div>
         </div>
-        <div class="mt-8 flex items-center gap-3 flex-wrap">
-          <a href="mailto:karst.support@gmail.com?subject=karst%20for%20teams" class="btn-primary">Talk to us about a team deployment</a>
-          <a href="/guides/SELF-HOSTED.html" class="btn-ghost">Self-hosted guide</a>
-        </div>
+        <form id="quote-form" class="mt-7 flex flex-col gap-3" novalidate>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="fld" for="q-email">Work email</label>
+              <input id="q-email" type="email" name="email" placeholder="you@company.com" required autocomplete="email" />
+            </div>
+            <div>
+              <label class="fld" for="q-company">Company</label>
+              <input id="q-company" type="text" name="company" placeholder="Acme Inc" />
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="fld" for="q-size">Team size</label>
+              <select id="q-size" name="size" class="field">
+                <option value="">Select…</option>
+                <option>1–10</option>
+                <option>11–50</option>
+                <option>51–200</option>
+                <option>200+</option>
+              </select>
+            </div>
+            <div>
+              <label class="fld" for="q-need">What do you need? (optional)</label>
+              <input id="q-need" type="text" name="need" placeholder="air-gapped, SSO, # of repos…" />
+            </div>
+          </div>
+          <div class="flex items-center gap-4">
+            <button type="submit" class="btn-primary justify-center whitespace-nowrap">Request a quote</button>
+            <p id="quote-msg" class="text-sm" role="status" aria-live="polite"></p>
+          </div>
+          <p class="text-xs text-dim">No public pricing — we'll scope a quote to your team. Prefer to read first? <a href="/guides/SELF-HOSTED.html" class="link-accent">Self-hosted guide &rarr;</a></p>
+        </form>
       </div>
       <div class="rounded-xl overflow-hidden border border-default code-bg">
         <img src="/enterprise-isolation.svg" alt="Animation: a team's API key is allowed to read its own repo but blocked with 403 from another team's repo" width="1600" height="900" class="w-full h-auto" loading="lazy" />
@@ -570,6 +599,53 @@ karst ask <span class="accent-2">"How does auth work?"</span></pre>
         });
         if (!res.ok) throw new Error('bad status');
         setMsg('Thanks — your message is on its way. 🎉', true);
+        form.reset();
+      } catch (err) {
+        setMsg('Something went wrong. Email karst.support@gmail.com instead?', false);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = prev;
+      }
+    });
+  })();
+
+  // Enterprise "Request a quote" — routes to the same admin ingest (tagged as an
+  // enterprise lead), so it lands in the inbox + emails the owner. No public price.
+  (function () {
+    var QUOTE_URL = window.KARST_FEEDBACK_URL || 'https://upgraded-garbanzo-x2e8.vercel.app/api/ingest/feedback';
+    var form = document.getElementById('quote-form');
+    if (!form) return;
+    var email = document.getElementById('q-email');
+    var company = document.getElementById('q-company');
+    var size = document.getElementById('q-size');
+    var need = document.getElementById('q-need');
+    var msg = document.getElementById('quote-msg');
+    function setMsg(text, ok) { msg.textContent = text; msg.style.color = ok ? 'var(--accent-2)' : '#f87171'; }
+
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var em = (email.value || '').trim();
+      if (em.indexOf('@') < 1) { setMsg('Please enter your work email.', false); return; }
+      var body = [
+        '[ENTERPRISE QUOTE REQUEST]',
+        'Company: ' + ((company.value || '').trim() || '—'),
+        'Team size: ' + (size.value || '—'),
+        'Needs: ' + ((need.value || '').trim() || '—'),
+      ].join('\n');
+      var payload = { source: 'other', severity: 'idea', contact: em, message: body };
+
+      var btn = form.querySelector('button');
+      btn.disabled = true;
+      var prev = btn.textContent;
+      btn.textContent = 'Sending...';
+      try {
+        var res = await fetch(QUOTE_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error('bad status');
+        setMsg('Thanks — we’ll get back to you with a quote. 🎉', true);
         form.reset();
       } catch (err) {
         setMsg('Something went wrong. Email karst.support@gmail.com instead?', false);
