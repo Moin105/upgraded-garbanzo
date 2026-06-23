@@ -2,15 +2,22 @@
 
 <!-- mcp-name: io.github.Moin105/karst -->
 
-**Code context for AI dev tools.** karst sits between your repo and any AI
-tool — Cursor, Claude Desktop, a custom agent — and feeds it the *right* slice
-of the codebase: graph-grounded, pack-scoped, and cited to `file:line`. The
-result is ~60% fewer input tokens per question, answers you can verify, and a
-blast-radius check before you change anything.
+**Know what your change breaks — without your code leaving your machine.**
+karst gives any AI coding tool — Cursor, Claude Desktop, a custom agent — a local
+map of your codebase. It answers questions with exact `file:line` citations **and**
+walks a real call / import / inheritance graph to compute the **blast radius** of a
+change — *"what else breaks if I touch this?"* — the question plain search and
+agentic `grep` can't answer.
 
-It runs **locally**, returns **context (not answers)** over **MCP**, and never
-calls an LLM itself — so you don't give karst an API key. Your IDE already has
-the model; karst just makes what it reads sharp and cheap.
+It runs **100% locally**, speaks **MCP** (so it drops into any agent), and never
+calls an LLM itself — your source code never leaves the box. As a bonus,
+pack-scoped retrieval cuts **~60%** of the input tokens per question.
+
+> **Regulated, air-gapped, or IP-sensitive team?** karst is built for the
+> environments cloud coding tools structurally can't enter — fully offline, no
+> telemetry, source you can audit. Start with the
+> **[Compliance & Air-Gap Pack](docs/compliance/README.md)** (attestation,
+> network-egress table, pre-filled security questionnaire, offline install).
 
 ```bash
 uv tool install karst      # recommended — fast, and puts `karst` on PATH for you

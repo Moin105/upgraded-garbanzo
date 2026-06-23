@@ -149,14 +149,14 @@
 <!-- Hero -->
 <section class="grid-bg">
   <div class="max-w-6xl mx-auto px-5 pt-20 pb-24 text-center">
-    <span class="pill mono">MCP-native &middot; Apache 2.0 &middot; Self-hosted</span>
+    <span class="pill mono">MCP-native &middot; 100% local &middot; Apache 2.0</span>
     <h1 class="mt-6 text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight leading-tight">
-      code context<br />for AI dev tools
+      know what your<br />change breaks
     </h1>
     <p class="mt-5 text-dim max-w-2xl mx-auto text-lg">
-      karst indexes your repo, packs it into small token-efficient bundles, and serves them over MCP
-      to Claude, Cursor, and any AI dev tool. Local-first and self-hosted — with a local model,
-      your code never leaves your machine.
+      karst gives Claude, Cursor, and any AI agent a local map of your codebase — cited answers
+      <span class="text-white">plus a real call-graph that shows the blast radius of a change.</span>
+      It runs 100% on your machine over MCP; your code never leaves the box. (And packs cut ~60% of the tokens.)
     </p>
     <div class="mt-8 flex items-center justify-center gap-3 flex-wrap">
       <a href="cursor://anysphere.cursor-deeplink/mcp/install?name=karst&amp;config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJrYXJzdCIsImthcnN0LW1jcCJdfQ=="
@@ -172,6 +172,10 @@
       <a href="https://insiders.vscode.dev/redirect/mcp/install?name=karst&amp;config=%7B%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22--from%22%2C%22karst%22%2C%22karst-mcp%22%5D%7D" class="link-accent">Add to VS Code</a>
       &middot;
       <a href="/guides/CONNECT.html" class="link-accent">Claude, Windsurf, Zed &amp; more</a>
+    </p>
+    <p class="mt-5 text-sm text-dim">
+      🔒 Regulated or air-gapped team? karst runs fully offline, with no telemetry and source you can audit —
+      <a href="/guides/SELF-HOSTED.html" class="link-accent">deploy it inside your perimeter &rarr;</a>
     </p>
   </div>
 </section>
