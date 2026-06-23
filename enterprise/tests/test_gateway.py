@@ -384,6 +384,33 @@ def test_repo_and_scope_enforcement(tmp_path):
     assert usage.summary(team_id="acme")["errors"] == 2
 
 
+def test_served_tokens_are_metered(tmp_path):
+    pytest.importorskip("starlette")
+    from enterprise.gateway.middleware import GatewayAuth
+
+    keys = KeyStore(tmp_path / "g.db")
+    usage = UsageLog(tmp_path / "u.db")
+    raw, _ = keys.create_key("acme", scopes=("*",), repos=("*",))
+
+    payload = b"x" * 4000   # the retrieved-context the gateway serves back
+
+    async def inner(scope, receive, send):
+        await receive()
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": payload})
+
+    gw = GatewayAuth(inner, keys=keys, usage=usage)
+    scope, body = _tools_call(raw, "search_code", "/srv/repos/acme-app")
+    sent = _run_asgi_with_body(gw, scope, body)
+    assert sent[0]["status"] == 200
+
+    s = usage.summary(team_id="acme")
+    # tokens_out ~= served-bytes/4; no longer the old always-zero. tokens_in
+    # reflects the request arguments. This is the per-team billing signal.
+    assert s["tokens_out"] == len(payload) // 4 == 1000
+    assert s["tokens_in"] == len(body) // 4 > 0
+
+
 def test_protocol_methods_pass_through(tmp_path):
     pytest.importorskip("starlette")
     from enterprise.gateway.middleware import GatewayAuth

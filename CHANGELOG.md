@@ -2,6 +2,20 @@
 
 All notable changes to **karst**. This project uses semantic-ish versioning.
 
+## 0.2.9
+
+- **Exact, per-model cost after every answer.** The token meter no longer just
+  estimates: `ask` now reads the *real* token usage the provider returns and
+  prints the actual spend, priced for the model you actually used —
+  `1,840 in + 612 out tok | $0.0276 + $0.0459 = $0.0735 (anthropic:claude-opus-4-8)`.
+  The pre-call figure is still shown (labelled `est.`) so you see a budget up
+  front and the real bill after. Local models show real token counts with no
+  dollar cost; a server that omits usage cleanly falls back to the estimate.
+- **Gateway meters served context tokens.** The enterprise gateway's usage/audit
+  log now records real `tokens_in`/`tokens_out` per call (the request arguments
+  and the retrieved-context payload it serves), so per-team usage is no longer
+  always zero — the billing/usage signal is live.
+
 ## 0.2.8
 
 - **Interface/inheritance edges in the graph.** A new `IMPLEMENTS` edge links a

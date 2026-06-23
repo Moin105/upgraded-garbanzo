@@ -269,6 +269,7 @@ def _answer_once(
         _print_token_meter(
             result.hits, question,
             provider_hint=result.llm.provider, model_hint=result.llm.model,
+            actual_in=result.llm.input_tokens, actual_out=result.llm.output_tokens,
         )
     return 0
 
@@ -338,27 +339,49 @@ def _print_token_meter(
     provider_hint: str | None = None,
     model_hint: str | None = None,
     estimate: bool = False,
+    actual_in: int | None = None,
+    actual_out: int | None = None,
 ) -> None:
-    """Show input-token estimate + dollar cost for the assembled prompt.
+    """Show token count + dollar cost for an `ask` call.
 
-    Mirrors ask._build_user_prompt's approximate size; the meter is a budget
-    tool, not a billing-accurate counter. Prices against the provider actually
-    in play (provider_hint), so a local model is shown as free and the figure
-    reflects the user's real setup rather than always quoting Anthropic.
+    Two modes:
+    * **exact** — when `actual_in`/`actual_out` are supplied (the real usage the
+      provider's API returned for a completed call), the figure is billing-accurate
+      and printed without the "~" marker;
+    * **estimate** — otherwise it mirrors ask._build_user_prompt's approximate
+      prompt size (chars/4) as a pre-call budget guide.
+
+    Either way it prices against the provider actually in play (provider_hint), so
+    a local model is shown as free and a cloud model is priced at its own rate —
+    never always quoting Anthropic.
     """
-    from .tokens import DEFAULT_CHARS_PER_TOKEN
+    from .tokens import DEFAULT_CHARS_PER_TOKEN, price_usage
 
-    # Count what the prompt ACTUALLY sends: ask truncates each chunk to
-    # _MAX_CHUNK_CHARS, so a single huge function doesn't inflate the estimate.
-    chars = sum(min(len(h.chunk.code), _MAX_CHUNK_CHARS) for h in hits) + len(question) + 800
-    in_tok = max(1, chars // DEFAULT_CHARS_PER_TOKEN)
+    # Exact only when the provider gave us BOTH real counts; a partial usage block
+    # (rare local-server case) cleanly falls back to the estimate so we never dress
+    # a guess up as a billed figure.
+    exact = actual_in is not None and actual_out is not None
+    if exact:
+        # Clamp: these come straight from the provider's API; a buggy/hostile
+        # server returning negatives must not render as a negative bill.
+        in_tok, out_tok = max(0, actual_in), max(0, actual_out)
+    else:
+        # Count what the prompt ACTUALLY sends: ask truncates each chunk to
+        # _MAX_CHUNK_CHARS, so a single huge function doesn't inflate the estimate.
+        chars = sum(min(len(h.chunk.code), _MAX_CHUNK_CHARS) for h in hits) + len(question) + 800
+        in_tok = max(1, chars // DEFAULT_CHARS_PER_TOKEN)
+        out_tok = None
 
     prov = (provider_hint or "").lower()
 
     # Local / self-hosted models have no per-token API price.
     if prov == "local":
         label = model_hint or "self-hosted"
-        print(f"~{in_tok:,} input tokens | local model ({label}) - no API cost", file=sys.stderr)
+        if exact:
+            count = f"{in_tok:,} in + {out_tok:,} out tokens"
+        else:
+            count = f"~{in_tok:,} input tokens"
+        print(f"{count} | local model ({label}) - no API cost", file=sys.stderr)
         return
 
     # Resolve a (provider, model) pair to price against.
@@ -374,15 +397,23 @@ def _print_token_meter(
     else:
         provider, model = "anthropic", DEFAULT_ANTHROPIC_MODEL
 
-    cost = estimate_cost(provider=provider, model=model, input_tokens=in_tok)
-    if cost is None:
-        print(
-            f"~{in_tok:,} input tokens (pricing unknown for {provider}:{model})",
-            file=sys.stderr,
+    if exact:
+        cost = price_usage(
+            provider=provider, model=model, input_tokens=in_tok, output_tokens=out_tok
         )
+    else:
+        cost = estimate_cost(provider=provider, model=model, input_tokens=in_tok)
+    if cost is None:
+        # Exact mode knows the real output count too — show it rather than
+        # mislabelling the line "input tokens" only.
+        if exact:
+            count = f"{in_tok:,} in + {out_tok:,} out tokens"
+        else:
+            count = f"~{in_tok:,} input tokens"
+        print(f"{count} (pricing unknown for {provider}:{model})", file=sys.stderr)
         return
     # 'est.' prefix when no call was actually made (no-LLM mode) so the figure
-    # isn't mistaken for an incurred charge.
+    # isn't mistaken for an incurred charge. Exact (post-call) figures get no prefix.
     print(("est. " if estimate else "") + cost.render(), file=sys.stderr)
 
 

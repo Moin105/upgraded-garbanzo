@@ -86,14 +86,19 @@ class CostEstimate:
     estimated_output_tokens: int
     input_cost_usd: float
     output_cost_usd: float
+    # True when both token counts came from the provider's real API usage block
+    # (via price_usage), so the figure is billable-accurate rather than a guess.
+    # Controls whether we print the "~" approximation marker.
+    exact: bool = False
 
     @property
     def total_usd(self) -> float:
         return self.input_cost_usd + self.output_cost_usd
 
     def render(self) -> str:
+        approx = "" if self.exact else "~"
         return (
-            f"~{self.input_tokens:,} in + ~{self.estimated_output_tokens:,} out tok | "
+            f"{approx}{self.input_tokens:,} in + {approx}{self.estimated_output_tokens:,} out tok | "
             f"${self.input_cost_usd:.4f} + ${self.output_cost_usd:.4f} = "
             f"${self.total_usd:.4f} ({self.provider}:{self.model})"
         )
@@ -116,4 +121,30 @@ def estimate_cost(
         estimated_output_tokens=estimated_output_tokens,
         input_cost_usd=input_tokens * p.input_per_mtok / 1_000_000,
         output_cost_usd=estimated_output_tokens * p.output_per_mtok / 1_000_000,
+    )
+
+
+def price_usage(
+    *,
+    provider: str,
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+) -> CostEstimate | None:
+    """Price the *real* token usage a provider reported for a completed call.
+
+    Same math as `estimate_cost`, but flagged `exact=True` so the meter shows
+    actual billed tokens (no "~") rather than the chars/4 pre-call estimate.
+    """
+    p = lookup_pricing(provider, model)
+    if p is None:
+        return None
+    return CostEstimate(
+        provider=provider,
+        model=model,
+        input_tokens=input_tokens,
+        estimated_output_tokens=output_tokens,
+        input_cost_usd=input_tokens * p.input_per_mtok / 1_000_000,
+        output_cost_usd=output_tokens * p.output_per_mtok / 1_000_000,
+        exact=True,
     )

@@ -136,9 +136,23 @@ class GatewayAuth:
                 return msg
             return await receive()
 
+        # Meter what the gateway actually serves: the request arguments in, and
+        # the retrieved-context payload out. This is the per-team "tokens" signal
+        # behind billing/usage — a karst MCP tool returns code context, so the
+        # response size IS the cost the agent then pays in its own LLM window.
+        # Rough chars/4 estimate (same heuristic as the CLI meter); exact enough
+        # for usage accounting without parsing every payload.
+        out_bytes = 0
+
+        async def metered_send(message: dict) -> None:
+            nonlocal out_bytes
+            if message.get("type") == "http.response.body":
+                out_bytes += len(message.get("body", b"") or b"")
+            await send(message)
+
         ok = True
         try:
-            await self._app(scope, replay, send)
+            await self._app(scope, replay, metered_send)
         except Exception:
             ok = False
             raise
@@ -146,5 +160,6 @@ class GatewayAuth:
             self._usage.log(
                 key_id=principal.key_id, team_id=principal.team_id,
                 tool=tool or path, repo=repo,
+                tokens_in=len(body) // 4, tokens_out=out_bytes // 4,
                 latency_ms=int((time.monotonic() - start) * 1000), ok=ok,
             )
