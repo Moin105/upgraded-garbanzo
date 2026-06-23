@@ -98,6 +98,17 @@ python -m enterprise.gateway.cli serve --host 0.0.0.0 --port 8080
 python -m enterprise.gateway.cli usage --team acme
 ```
 
+## Commercial model
+
+This is the **paid, quote-only** tier — the monetizable, defensible asset.
+- **Not distributed.** `enterprise/**` is **excluded from the PyPI package** (the
+  wheel + sdist contain only `karst*` — verified), and there is no public pricing.
+  Interested teams **request a quote** (the landing page's "For teams" form routes
+  the lead to the owner). Don't add this folder to the public package or expose it
+  for free anywhere — gating it is what makes the open-core / VC story work.
+- The free `karst` core (Apache-2.0, on PyPI) drives adoption; this layer is where
+  revenue comes from.
+
 ## Licensing
 
 This folder is **not** Apache-2.0 by default just because it lives in the same
