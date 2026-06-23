@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://karst.dev/</loc><priority>1.0</priority></url>
+  <url><loc>https://karst.dev/how-it-works.html</loc><priority>0.8</priority></url>
+  <url><loc>https://karst.dev/guides/WHY.html</loc><priority>0.7</priority></url>
+  <url><loc>https://karst.dev/guides/QUICKSTART.html</loc><priority>0.7</priority></url>
+  <url><loc>https://karst.dev/guides/FOR-VIBE-CODERS.html</loc><priority>0.6</priority></url>
+  <url><loc>https://karst.dev/guides/CONNECT.html</loc><priority>0.7</priority></url>
+  <url><loc>https://karst.dev/guides/COOKBOOK.html</loc><priority>0.6</priority></url>
+  <url><loc>https://karst.dev/guides/MCP.html</loc><priority>0.6</priority></url>
+  <url><loc>https://karst.dev/guides/SELF-HOSTED.html</loc><priority>0.7</priority></url>
+</urlset>

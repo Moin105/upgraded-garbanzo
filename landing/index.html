@@ -3,17 +3,27 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>karst — code context for AI dev tools</title>
-<meta name="description" content="karst indexes your repo, packs it into small token-efficient bundles, and serves them over MCP to Claude, Cursor, and any AI dev tool." />
+<meta name="theme-color" content="#0a0a0f" />
+<title>karst — code context &amp; blast-radius impact for AI coding agents</title>
+<meta name="description" content="karst gives any AI coding agent (Claude, Cursor, …) a local map of your codebase: cited answers plus blast-radius impact analysis — what your change breaks. 100% local, MCP-native, ~60% fewer tokens." />
+<meta name="keywords" content="code context, MCP server, AI coding agent, impact analysis, blast radius, local, air-gapped, Claude, Cursor, codebase search" />
+<link rel="canonical" href="https://karst.dev/" />
 
-<meta property="og:title" content="karst — code context for AI dev tools" />
-<meta property="og:description" content="MCP-native code context. 343s to 2.3s incremental reindex, $0.019 per query on Sonnet 4.6, 60% fewer tokens." />
-<meta property="og:image" content="/og-image.png" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+<meta property="og:title" content="karst — code context &amp; blast-radius impact for AI coding agents" />
+<meta property="og:description" content="A local map of your codebase for any AI agent: cited answers + what your change breaks. 100% local, MCP-native, ~60% fewer tokens." />
+<meta property="og:image" content="https://karst.dev/og-image.png" />
+<meta property="og:url" content="https://karst.dev/" />
 <meta property="og:type" content="website" />
+<meta property="og:site_name" content="karst" />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="karst — code context for AI dev tools" />
-<meta name="twitter:description" content="MCP-native code context. 343s to 2.3s incremental reindex, $0.019 per query on Sonnet 4.6, 60% fewer tokens." />
-<meta name="twitter:image" content="/og-image.png" />
+<meta name="twitter:title" content="karst — code context &amp; impact analysis for AI agents" />
+<meta name="twitter:description" content="A local map of your codebase for any AI agent: cited answers + what your change breaks. 100% local, MCP-native." />
+<meta name="twitter:image" content="https://karst.dev/og-image.png" />
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -100,7 +110,27 @@
   a.link-accent:hover { text-decoration: underline; }
   .doc-card { display: block; transition: border-color .15s ease, background .15s ease, transform .15s ease; }
   .doc-card:hover { border-color: var(--accent); background: rgba(129,140,248,0.05); transform: translateY(-2px); }
+  /* Mobile nav menu (CSS-only hamburger toggle; no framework needed) */
+  #nav-toggle { display: none; }
+  #mobile-nav { display: none; flex-direction: column; }
+  #nav-toggle:checked ~ #mobile-nav { display: flex; }
+  @media (min-width: 640px) { .nav-burger { display: none; } #mobile-nav { display: none !important; } }
 </style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "karst",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "macOS, Linux, Windows (WSL)",
+  "description": "Local, MCP-native code context for AI coding agents: cited answers plus blast-radius impact analysis (what a change breaks). Runs 100% on your machine.",
+  "url": "https://karst.dev/",
+  "downloadUrl": "https://pypi.org/project/karst/",
+  "softwareVersion": "0.2.8",
+  "license": "https://www.apache.org/licenses/LICENSE-2.0",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+}
+</script>
 </head>
 <body class="min-h-screen">
 
@@ -132,18 +162,31 @@
 </svg>
 
 <header class="border-b border-default">
+  <input type="checkbox" id="nav-toggle" aria-hidden="true" />
   <div class="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between">
     <a href="/" class="flex items-center gap-2.5">
       <svg width="28" height="28" aria-hidden="true"><use href="#karst-logo" /></svg>
       <span class="text-lg font-semibold tracking-tight">karst</span>
     </a>
-    <nav class="flex items-center gap-6 text-sm text-dim">
+    <!-- desktop nav -->
+    <nav class="hidden sm:flex items-center gap-6 text-sm text-dim">
       <a href="/how-it-works.html" class="hover:text-white">How it works</a>
       <a href="#install" class="hover:text-white">Install</a>
       <a href="#guides" class="hover:text-white">Guides</a>
       <a href="https://pypi.org/project/karst/" class="hover:text-white">PyPI</a>
     </nav>
+    <!-- mobile hamburger -->
+    <label for="nav-toggle" class="nav-burger cursor-pointer p-2 -mr-2 text-dim hover:text-white" role="button" aria-label="Toggle menu" tabindex="0">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </label>
   </div>
+  <!-- mobile dropdown menu -->
+  <nav id="mobile-nav" class="sm:hidden border-t border-default px-5 py-2 text-dim">
+    <a href="/how-it-works.html" class="block py-2.5 hover:text-white">How it works</a>
+    <a href="#install" class="block py-2.5 hover:text-white">Install</a>
+    <a href="#guides" class="block py-2.5 hover:text-white">Guides</a>
+    <a href="https://pypi.org/project/karst/" class="block py-2.5 hover:text-white">PyPI</a>
+  </nav>
 </header>
 
 <!-- Hero -->
