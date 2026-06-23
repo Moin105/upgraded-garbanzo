@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "karst"
-version = "0.2.7"
+version = "0.2.8"
 description = "Code context for AI dev tools — graph-grounded, pack-scoped retrieval over MCP. 60% fewer tokens, audit-grade citations."
 readme = "README.md"
 requires-python = ">=3.10"

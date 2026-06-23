@@ -3,7 +3,7 @@
   "name": "io.github.Moin105/karst",
   "title": "karst",
   "description": "Code context for AI dev tools: pack-scoped, cited code retrieval over MCP.",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "websiteUrl": "https://pypi.org/project/karst/",
   "repository": {
     "url": "https://github.com/Moin105/upgraded-garbanzo",
@@ -14,7 +14,7 @@
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "karst",
-      "version": "0.2.7",
+      "version": "0.2.8",
       "runtimeHint": "uvx",
       "runtimeArguments": [
         { "type": "named", "name": "--from", "value": "karst" },

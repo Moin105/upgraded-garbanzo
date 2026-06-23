@@ -2,7 +2,7 @@
 
 All notable changes to **karst**. This project uses semantic-ish versioning.
 
-## Unreleased
+## 0.2.8
 
 - **Interface/inheritance edges in the graph.** A new `IMPLEMENTS` edge links a
   class to the interface it implements or the base it extends (Python base
@@ -10,6 +10,11 @@ All notable changes to **karst**. This project uses semantic-ish versioning.
   `karst impact <Interface>` now lists every class that implements it — and
   GraphRAG pulls a class's interface in as context. Name-only resolution like
   CALLS (Python + JS/TS); rebuild with `karst graph-index` to populate it.
+- **Compliance & Air-Gap Pack** (`docs/compliance/`): a security-review packet for
+  regulated/air-gapped teams — attestation, full network-egress table, pre-filled
+  security questionnaire, and an offline-install + SBOM + "prove it offline" guide.
+- **Repositioned** the README + landing around the offline blast-radius wedge
+  ("know what your change breaks") and the platform/security buyer.
 
 ## 0.2.7
 
