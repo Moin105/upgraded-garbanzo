@@ -2,7 +2,7 @@
 
 All notable changes to **karst**. This project uses semantic-ish versioning.
 
-## Unreleased
+## 0.2.7
 
 **Polish from an external test report (v0.2.6).**
 
