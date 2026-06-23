@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from collections import Counter
@@ -212,6 +213,26 @@ def _answer_once(
         except Exception:
             pass
 
+    # Nothing matched — say why, instead of printing an empty section. The most
+    # common cause is an active pack filter that excludes the answer's code.
+    if not result.hits:
+        print("No matching chunks found for this question.", file=sys.stderr)
+        if pack_ids:
+            print(
+                f"  Search was scoped to {len(pack_ids)} active pack(s): "
+                f"{', '.join(pack_ids)}.\n"
+                "  Re-run with --all-packs to search the whole index, or "
+                "`karst packs detach <id>` to drop a scope.",
+                file=sys.stderr,
+            )
+        else:
+            print(
+                "  The index has no match for this query — confirm you ran "
+                "`karst index` (or `karst quickstart`) in this project.",
+                file=sys.stderr,
+            )
+        return 0
+
     # Always show retrieval first — these are the citations the answer rests on.
     print("Retrieved chunks:", file=sys.stderr)
     for i, hit in enumerate(result.hits, start=1):
@@ -230,16 +251,25 @@ def _answer_once(
             print(f"# [{i}] {c.citation} - {c.kind.value} {c.qualified_name}")
             print(c.code)
             print()
-        # Even in no-LLM mode, show what a real call would cost — so users
-        # understand the token bill they'd save.
-        _print_token_meter(result.hits, question, model_hint=None)
+        # Even in no-LLM mode, show what a real call WOULD cost — labelled as an
+        # estimate. Respect the provider the user would actually use (their
+        # --llm flag or KARST_LLM_PROVIDER) so a local-model user isn't quoted
+        # Anthropic pricing for a call they'd never pay for.
+        est_provider = args.llm or os.environ.get("KARST_LLM_PROVIDER") or "anthropic"
+        _print_token_meter(
+            result.hits, question,
+            provider_hint=est_provider, model_hint=args.model, estimate=True,
+        )
         return 0
 
     print(result.answer)
     if result.llm is not None:
         print("", file=sys.stderr)
         print(f"(answered by {result.llm.provider}:{result.llm.model})", file=sys.stderr)
-        _print_token_meter(result.hits, question, model_hint=result.llm.model)
+        _print_token_meter(
+            result.hits, question,
+            provider_hint=result.llm.provider, model_hint=result.llm.model,
+        )
     return 0
 
 
@@ -301,11 +331,20 @@ def _cmd_ask(args: argparse.Namespace) -> int:
             print(f"error: {e}", file=sys.stderr)
 
 
-def _print_token_meter(hits, question, *, model_hint: str | None) -> None:
+def _print_token_meter(
+    hits,
+    question,
+    *,
+    provider_hint: str | None = None,
+    model_hint: str | None = None,
+    estimate: bool = False,
+) -> None:
     """Show input-token estimate + dollar cost for the assembled prompt.
 
-    Mirrors ask._build_user_prompt's approximate size; the meter is a
-    budget tool, not a billing-accurate counter.
+    Mirrors ask._build_user_prompt's approximate size; the meter is a budget
+    tool, not a billing-accurate counter. Prices against the provider actually
+    in play (provider_hint), so a local model is shown as free and the figure
+    reflects the user's real setup rather than always quoting Anthropic.
     """
     from .tokens import DEFAULT_CHARS_PER_TOKEN
 
@@ -314,18 +353,37 @@ def _print_token_meter(hits, question, *, model_hint: str | None) -> None:
     chars = sum(min(len(h.chunk.code), _MAX_CHUNK_CHARS) for h in hits) + len(question) + 800
     in_tok = max(1, chars // DEFAULT_CHARS_PER_TOKEN)
 
-    if model_hint and "claude" in model_hint:
-        cost = estimate_cost(provider="anthropic", model=model_hint, input_tokens=in_tok)
-    elif model_hint and "gpt" in model_hint:
-        cost = estimate_cost(provider="openai", model=model_hint, input_tokens=in_tok)
-    else:
-        cost = estimate_cost(
-            provider="anthropic", model=DEFAULT_ANTHROPIC_MODEL, input_tokens=in_tok
-        )
-    if cost is None:
-        print(f"~{in_tok:,} input tokens (pricing unknown for {model_hint})", file=sys.stderr)
+    prov = (provider_hint or "").lower()
+
+    # Local / self-hosted models have no per-token API price.
+    if prov == "local":
+        label = model_hint or "self-hosted"
+        print(f"~{in_tok:,} input tokens | local model ({label}) - no API cost", file=sys.stderr)
         return
-    print(cost.render(), file=sys.stderr)
+
+    # Resolve a (provider, model) pair to price against.
+    if prov in ("anthropic", "openai"):
+        provider = prov
+        model = model_hint or (
+            DEFAULT_ANTHROPIC_MODEL if prov == "anthropic" else DEFAULT_OPENAI_MODEL
+        )
+    elif model_hint and "claude" in model_hint:
+        provider, model = "anthropic", model_hint
+    elif model_hint and "gpt" in model_hint:
+        provider, model = "openai", model_hint
+    else:
+        provider, model = "anthropic", DEFAULT_ANTHROPIC_MODEL
+
+    cost = estimate_cost(provider=provider, model=model, input_tokens=in_tok)
+    if cost is None:
+        print(
+            f"~{in_tok:,} input tokens (pricing unknown for {provider}:{model})",
+            file=sys.stderr,
+        )
+        return
+    # 'est.' prefix when no call was actually made (no-LLM mode) so the figure
+    # isn't mistaken for an incurred charge.
+    print(("est. " if estimate else "") + cost.render(), file=sys.stderr)
 
 
 # --------------------------------------------------------------------------- #

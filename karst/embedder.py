@@ -11,6 +11,7 @@ single constant.
 
 from __future__ import annotations
 
+import os
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 
@@ -18,6 +19,21 @@ from .models import Chunk
 
 DEFAULT_MODEL = "BAAI/bge-small-en-v1.5"
 DEFAULT_BATCH = 32
+
+_OFFLINE_TRUTHY = {"1", "true", "yes", "on"}
+
+
+def _apply_offline_env() -> None:
+    """Air-gapped support for `KARST_OFFLINE=1`.
+
+    Flip HuggingFace / transformers into offline mode BEFORE fastembed imports,
+    so the embedder reads only a pre-seeded model cache and never reaches the
+    network. The embedding model must already be cached (see docs/SELF-HOSTED.md
+    for how to pre-seed it). Opt-in: does nothing unless KARST_OFFLINE is set.
+    """
+    if os.environ.get("KARST_OFFLINE", "").strip().lower() in _OFFLINE_TRUTHY:
+        os.environ.setdefault("HF_HUB_OFFLINE", "1")
+        os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 
 # Code chunks can be long. Most embedding models truncate at ~512 tokens; we
 # cap input bytes so the truncation falls in a predictable place (and so we
@@ -38,6 +54,8 @@ class Embedder:
         *,
         cache_dir: str | None = None,
     ) -> None:
+        # Honor KARST_OFFLINE before fastembed (and thus HuggingFace) loads.
+        _apply_offline_env()
         # Imported lazily so test runs that don't touch embeddings skip the
         # ONNX warmup entirely.
         from fastembed import TextEmbedding
