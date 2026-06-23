@@ -14,6 +14,7 @@ import sys
 import time
 from pathlib import Path
 
+from .db import is_postgres, resolve_url
 from .keys import DEFAULT_SCOPES, KeyStore
 from .usage import UsageLog
 
@@ -22,13 +23,13 @@ def _default_db() -> Path:
     return Path.home() / ".karst" / "enterprise" / "gateway.db"
 
 
-def _ensure_parent(p: Path) -> None:
-    p.parent.mkdir(parents=True, exist_ok=True)
-
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="karst-enterprise", description="karst enterprise gateway admin.")
-    parser.add_argument("--db", help="Gateway sqlite path (default ~/.karst/enterprise/gateway.db).")
+    parser.add_argument(
+        "--db",
+        help="Gateway store: a sqlite path or a postgres:// URL. Defaults to "
+        "$DATABASE_URL, else ~/.karst/enterprise/gateway.db.",
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_keys = sub.add_parser("keys", help="Manage API keys.")
@@ -72,8 +73,11 @@ def main(argv: list[str] | None = None) -> int:
     p_serve.add_argument("--port", type=int, default=8080)
 
     args = parser.parse_args(argv)
-    db = Path(args.db) if args.db else _default_db()
-    _ensure_parent(db)
+    # Explicit --db wins; else $DATABASE_URL (production Postgres); else the
+    # local sqlite default.
+    db = args.db if args.db else resolve_url(str(_default_db()))
+    if not is_postgres(db):
+        Path(db).parent.mkdir(parents=True, exist_ok=True)
 
     if args.command == "keys":
         store = KeyStore(db)

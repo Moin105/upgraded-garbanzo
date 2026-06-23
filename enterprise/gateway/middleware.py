@@ -12,6 +12,7 @@ import time
 from typing import Awaitable, Callable
 
 from .keys import KeyStore, Principal
+from .oidc import OidcVerifier
 from .usage import UsageLog
 
 Scope = dict
@@ -26,11 +27,13 @@ class GatewayAuth:
         *,
         keys: KeyStore,
         usage: UsageLog,
+        oidc: OidcVerifier | None = None,
         open_paths: tuple[str, ...] = ("/healthz", "/health"),
     ) -> None:
         self._app = app
         self._keys = keys
         self._usage = usage
+        self._oidc = oidc
         self._open = set(open_paths)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
@@ -49,7 +52,13 @@ class GatewayAuth:
         headers = dict(scope.get("headers") or [])
         auth = headers.get(b"authorization", b"").decode("latin-1")
         token = auth[7:].strip() if auth[:7].lower() == "bearer " else ""
-        principal: Principal | None = self._keys.verify(token)
+        # Accept an enterprise SSO (OIDC JWT) token if configured, else fall
+        # back to a static per-team API key. Either resolves to a Principal.
+        principal: Principal | None = None
+        if self._oidc is not None:
+            principal = self._oidc.verify(token)
+        if principal is None:
+            principal = self._keys.verify(token)
 
         if principal is None:
             await JSONResponse({"error": "unauthorized"}, status_code=401)(scope, receive, send)

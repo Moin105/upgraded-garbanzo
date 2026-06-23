@@ -16,7 +16,9 @@ import json
 import time
 from dataclasses import dataclass
 from pathlib import Path
-import sqlite3
+from typing import Any
+
+from .db import Db
 
 
 @dataclass(frozen=True)
@@ -47,7 +49,7 @@ CREATE INDEX IF NOT EXISTS idx_team_packs_team_name ON team_packs(team_id, name,
 """
 
 
-def _row(r: sqlite3.Row) -> TeamPack:
+def _row(r: Any) -> TeamPack:
     return TeamPack(
         id=r["id"],
         team_id=r["team_id"],
@@ -62,10 +64,8 @@ def _row(r: sqlite3.Row) -> TeamPack:
 
 class PackRegistry:
     def __init__(self, path: str | Path) -> None:
-        self.path = str(path)
-        self._conn = sqlite3.connect(self.path)
-        self._conn.row_factory = sqlite3.Row
-        self._conn.executescript(_SCHEMA)
+        self.db = Db(path)
+        self.db.executescript(_SCHEMA)
 
     def publish(
         self,
@@ -82,50 +82,49 @@ class PackRegistry:
             raise ValueError("pack name is required")
         if not globs:
             raise ValueError("a pack needs at least one glob scope")
-        latest = self._conn.execute(
+        latest = self.db.run(
             "SELECT MAX(version) AS v FROM team_packs WHERE team_id = ? AND name = ?",
             (team_id, name),
-        ).fetchone()
+        ).one()
         version = int((latest["v"] or 0)) + 1
-        cur = self._conn.execute(
+        self.db.run(
             "INSERT INTO team_packs (team_id, name, version, globs, description, created_at, created_by)"
             " VALUES (?, ?, ?, ?, ?, ?, ?)",
             (team_id, name, version, json.dumps(list(globs)), description, time.time(), created_by),
         )
-        self._conn.commit()
         return self.get(team_id, name, version=version)  # type: ignore[return-value]
 
     def get(self, team_id: str, name: str, *, version: int | None = None) -> TeamPack | None:
         """Get a pack — the latest version unless one is pinned."""
         if version is None:
-            r = self._conn.execute(
+            r = self.db.run(
                 "SELECT * FROM team_packs WHERE team_id = ? AND name = ?"
                 " ORDER BY version DESC LIMIT 1",
                 (team_id, name),
-            ).fetchone()
+            ).one()
         else:
-            r = self._conn.execute(
+            r = self.db.run(
                 "SELECT * FROM team_packs WHERE team_id = ? AND name = ? AND version = ?",
                 (team_id, name, version),
-            ).fetchone()
+            ).one()
         return _row(r) if r else None
 
     def list_packs(self, team_id: str) -> list[TeamPack]:
         """Latest version of every pack in the team's library."""
-        rows = self._conn.execute(
+        rows = self.db.run(
             "SELECT * FROM team_packs t WHERE team_id = ? AND version ="
             " (SELECT MAX(version) FROM team_packs WHERE team_id = t.team_id AND name = t.name)"
             " ORDER BY name ASC",
             (team_id,),
-        ).fetchall()
+        ).all()
         return [_row(r) for r in rows]
 
     def history(self, team_id: str, name: str) -> list[TeamPack]:
-        rows = self._conn.execute(
+        rows = self.db.run(
             "SELECT * FROM team_packs WHERE team_id = ? AND name = ? ORDER BY version DESC",
             (team_id, name),
-        ).fetchall()
+        ).all()
         return [_row(r) for r in rows]
 
     def close(self) -> None:
-        self._conn.close()
+        self.db.close()

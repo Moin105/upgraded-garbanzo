@@ -7,9 +7,10 @@ must-haves — **billing/usage** ("how many tokens did team X spend") and
 """
 from __future__ import annotations
 
-import sqlite3
 import time
 from pathlib import Path
+
+from .db import Db
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS usage_events (
@@ -30,10 +31,8 @@ CREATE INDEX IF NOT EXISTS idx_usage_team_ts ON usage_events(team_id, ts);
 
 class UsageLog:
     def __init__(self, path: str | Path) -> None:
-        self.path = str(path)
-        self._conn = sqlite3.connect(self.path)
-        self._conn.row_factory = sqlite3.Row
-        self._conn.executescript(_SCHEMA)
+        self.db = Db(path)
+        self.db.executescript(_SCHEMA)
 
     def log(
         self,
@@ -47,13 +46,12 @@ class UsageLog:
         latency_ms: int = 0,
         ok: bool = True,
     ) -> None:
-        self._conn.execute(
+        self.db.run(
             "INSERT INTO usage_events"
             " (ts, key_id, team_id, tool, repo, tokens_in, tokens_out, latency_ms, ok)"
             " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (time.time(), key_id, team_id, tool, repo, tokens_in, tokens_out, latency_ms, 1 if ok else 0),
         )
-        self._conn.commit()
 
     def summary(self, *, team_id: str | None = None, since: float | None = None) -> dict:
         where: list[str] = []
@@ -65,32 +63,32 @@ class UsageLog:
             where.append("ts >= ?")
             args.append(since)
         clause = (" WHERE " + " AND ".join(where)) if where else ""
-        row = self._conn.execute(
+        row = self.db.run(
             "SELECT COUNT(*) AS calls,"
             " COALESCE(SUM(tokens_in), 0) AS tokens_in,"
             " COALESCE(SUM(tokens_out), 0) AS tokens_out,"
             " COALESCE(SUM(CASE WHEN ok = 0 THEN 1 ELSE 0 END), 0) AS errors"
             f" FROM usage_events{clause}",
             args,
-        ).fetchone()
+        ).one()
         return {
-            "calls": row["calls"],
-            "tokens_in": row["tokens_in"],
-            "tokens_out": row["tokens_out"],
-            "errors": row["errors"],
+            "calls": int(row["calls"]),
+            "tokens_in": int(row["tokens_in"]),
+            "tokens_out": int(row["tokens_out"]),
+            "errors": int(row["errors"]),
         }
 
     def recent(self, *, limit: int = 50, team_id: str | None = None) -> list[dict]:
         if team_id:
-            rows = self._conn.execute(
+            rows = self.db.run(
                 "SELECT * FROM usage_events WHERE team_id = ? ORDER BY ts DESC LIMIT ?",
                 (team_id, limit),
-            ).fetchall()
+            ).all()
         else:
-            rows = self._conn.execute(
+            rows = self.db.run(
                 "SELECT * FROM usage_events ORDER BY ts DESC LIMIT ?", (limit,)
-            ).fetchall()
+            ).all()
         return [dict(r) for r in rows]
 
     def close(self) -> None:
-        self._conn.close()
+        self.db.close()

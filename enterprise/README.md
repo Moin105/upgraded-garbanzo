@@ -20,8 +20,10 @@ Enterprise mode monetizes that edge for teams who need:
 
 - **Shared context, not per-dev silos** — one team publishes packs, everyone
   pulls them. Curation effort is spent once.
-- **Governance** — who can see which repos/packs, who called what, how many
-  tokens it cost. Audit-grade, on-prem.
+- **Governance** — who called what, how many tokens it cost: usage + audit
+  metering per team, on-prem. *(Per-team **repo access control** — restricting
+  which repos a team key can query — is on the roadmap; today the gateway does
+  authentication + metering, not tenant data isolation. See [DEPLOY.md](DEPLOY.md).)*
 - **A single endpoint** — one authenticated MCP gateway the whole org points
   their AI tools at, instead of every dev running their own server.
 
@@ -55,20 +57,27 @@ audited**, and access is **scoped**.
    `python -m enterprise.gateway.cli serve`.
 3. **Team pack libraries** ✅ — `gateway/packs.py`: publish/pull **versioned**
    shared pack definitions per team, so curation is done once, not per-dev.
-4. **RBAC + SSO** — scopes per key today; SAML/OIDC + per-repo access policy
-   next.
-5. **Self-hosted deploy** — Docker / compose, Postgres backend, on-prem.
+4. **SSO + RBAC** — ✅ **OIDC/SSO**: accept enterprise-IdP JWTs alongside API
+   keys (`gateway/oidc.py`, enable with `KARST_OIDC_ISSUER`). Scopes are carried
+   per principal; per-MCP-tool *enforcement* + per-repo policy + SCIM are next.
+5. **Self-hosted deploy** ✅ — Docker image + Compose (gateway + Postgres),
+   `DATABASE_URL` Postgres backend, env-config. See [DEPLOY.md](DEPLOY.md).
 6. **Admin UI** — extend the existing dashboard with key management, usage
    dashboards, and audit export.
 
 ## Status
 
-- `gateway/keys.py` — API-key store (sqlite; Postgres-portable schema). ✅
+- `gateway/db.py` — storage adapter: **sqlite** (dev/air-gapped) or **PostgreSQL**
+  (production, via `DATABASE_URL`). Verified against live Postgres 16. ✅
+- `gateway/keys.py` — API-key store (hashed, revocable, scoped). ✅
 - `gateway/usage.py` — usage metering + audit log. ✅
-- `gateway/middleware.py` — ASGI per-key auth + usage logging. ✅
-- `gateway/cli.py` — admin CLI: create/list/revoke keys, usage summary. ✅
-- Tests: `tests/test_gateway.py`. ✅
-- Pure stdlib so far (sqlite3, hashlib, secrets) — no new runtime deps.
+- `gateway/oidc.py` — optional **OIDC/SSO** JWT auth (PyJWT). ✅
+- `gateway/middleware.py` — ASGI auth (API key **or** SSO JWT) + usage logging. ✅
+- `gateway/cli.py` — admin CLI: create/list/revoke keys, usage, packs, serve. ✅
+- `Dockerfile` + `docker-compose.yml` + [DEPLOY.md](DEPLOY.md) — one-command deploy. ✅
+- Tests: `tests/test_gateway.py` (15, incl. Postgres translation + OIDC). ✅
+- Core (keys/usage/packs) is pure stdlib + sqlite; production adds `psycopg`
+  (Postgres) and `PyJWT` (SSO) — see [requirements.txt](requirements.txt).
 
 ## Try it
 

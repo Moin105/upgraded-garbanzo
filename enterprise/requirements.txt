@@ -1,0 +1,6 @@
+# Runtime deps for the karst enterprise gateway (NOT the free PyPI package).
+# The free core is installed from PyPI; this layer adds Postgres + SSO.
+karst==0.2.8
+psycopg[binary]>=3.1      # PostgreSQL backend (binary wheel — no build toolchain)
+PyJWT[crypto]>=2.8        # OIDC/SSO JWT validation
+uvicorn>=0.27             # ASGI server (also pulled in by karst's mcp dep)

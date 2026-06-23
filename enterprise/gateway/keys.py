@@ -10,10 +10,11 @@ from __future__ import annotations
 
 import hashlib
 import secrets
-import sqlite3
 import time
 from dataclasses import dataclass
 from pathlib import Path
+
+from .db import Db
 
 # Human-recognisable prefix (think `sk-...`). The first chars are also stored in
 # clear as `prefix` so admins can identify a key in a list without seeing it.
@@ -69,10 +70,8 @@ def _hash(key: str) -> str:
 
 class KeyStore:
     def __init__(self, path: str | Path) -> None:
-        self.path = str(path)
-        self._conn = sqlite3.connect(self.path)
-        self._conn.row_factory = sqlite3.Row
-        self._conn.executescript(_SCHEMA)
+        self.db = Db(path)
+        self.db.executescript(_SCHEMA)
 
     # -- write ---------------------------------------------------------------
     def create_key(
@@ -85,22 +84,19 @@ class KeyStore:
         """Create a key. Returns ``(plaintext_key, key_id)``. The plaintext is
         the ONLY time the secret exists — store the hash, show the user once."""
         raw = KEY_PREFIX + secrets.token_urlsafe(32)
-        now = time.time()
-        cur = self._conn.execute(
+        kid = self.db.insert(
             "INSERT INTO api_keys (key_hash, prefix, team_id, label, scopes, created_at)"
             " VALUES (?, ?, ?, ?, ?, ?)",
-            (_hash(raw), raw[: len(KEY_PREFIX) + 6], team_id, label, ",".join(scopes), now),
+            (_hash(raw), raw[: len(KEY_PREFIX) + 6], team_id, label, ",".join(scopes), time.time()),
         )
-        self._conn.commit()
-        return raw, int(cur.lastrowid)
+        return raw, kid
 
     def revoke(self, key_id: int) -> bool:
-        cur = self._conn.execute(
+        res = self.db.run(
             "UPDATE api_keys SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL",
             (time.time(), key_id),
         )
-        self._conn.commit()
-        return cur.rowcount > 0
+        return res.rowcount > 0
 
     # -- read ----------------------------------------------------------------
     def verify(self, presented: str | None) -> Principal | None:
@@ -110,10 +106,10 @@ class KeyStore:
         revoked key never authenticates."""
         if not presented:
             return None
-        row = self._conn.execute(
+        row = self.db.run(
             "SELECT * FROM api_keys WHERE key_hash = ? AND revoked_at IS NULL",
             (_hash(presented),),
-        ).fetchone()
+        ).one()
         if row is None:
             return None
         return Principal(
@@ -125,13 +121,11 @@ class KeyStore:
 
     def list_keys(self, team_id: str | None = None) -> list[KeyInfo]:
         if team_id:
-            rows = self._conn.execute(
+            rows = self.db.run(
                 "SELECT * FROM api_keys WHERE team_id = ? ORDER BY created_at DESC", (team_id,)
-            ).fetchall()
+            ).all()
         else:
-            rows = self._conn.execute(
-                "SELECT * FROM api_keys ORDER BY created_at DESC"
-            ).fetchall()
+            rows = self.db.run("SELECT * FROM api_keys ORDER BY created_at DESC").all()
         return [
             KeyInfo(
                 id=r["id"],
@@ -146,4 +140,4 @@ class KeyStore:
         ]
 
     def close(self) -> None:
-        self._conn.close()
+        self.db.close()

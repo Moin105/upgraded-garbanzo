@@ -1,0 +1,41 @@
+# karst enterprise gateway + PostgreSQL — one command to a deployable team gateway.
+#
+#   docker compose up -d
+#   # then mint a team key:
+#   docker compose exec gateway python -m enterprise.gateway.cli keys add --team acme --label "CI bot"
+#   # point your org's AI tools at http://<host>:8080/mcp  (Authorization: Bearer <key>)
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: karst
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD (e.g. in enterprise/.env)}
+      POSTGRES_DB: karst_gateway
+    volumes:
+      - karst_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U karst -d karst_gateway"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://karst:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD (e.g. in enterprise/.env)}@db:5432/karst_gateway
+      # --- optional SSO (uncomment + set to accept enterprise IdP JWTs) ---
+      # KARST_OIDC_ISSUER: https://login.your-company.com/
+      # KARST_OIDC_AUDIENCE: karst-gateway
+      # KARST_OIDC_TEAM_CLAIM: org
+      # KARST_OIDC_SCOPES_CLAIM: scope
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+volumes:
+  karst_pgdata:
