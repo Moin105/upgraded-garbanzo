@@ -6,24 +6,28 @@ karst is three pieces that talk over HTTPS. None of them share a database direct
 
 ```
                               karst.dev
-                              (public)
+                              (public, Vercel)
    +-----------+   GET    +------------------+
    |  Browser  |--------->|  Vercel landing  |
    +-----------+          +--------+---------+
                                    |
                                    | POST /api/waitlist  (email, source)
+                                   | POST /api/ingest/feedback
                                    v
-                       +-------------------------+
-                       |   Fly.io dashboard      |
-                       |   admin.karst.dev       |
-                       |                         |
-   +-----------+ POST  |   /api/waitlist         |     +--------------+
-   | User CLI  |------>|   /api/ingest/install   |---->| SQLite       |
-   |  (karst)  |       |   /api/ingest/query     |     | karst.db     |
-   +-----------+       |   /api/ingest/error     |     | (Fly volume) |
-                       |                         |     +--------------+
-                       |   /dashboard (UI)       |
-                       +-----------+-------------+
+                       +---------------------------+
+                       |   Vercel dashboard        |
+                       |   (Next.js 15, serverless)|
+                       |   *.vercel.app            |
+                       |   [planned: admin.karst.  |
+                       |    dev — not yet wired]   |
+   +-----------+ POST  |                           |     +---------------+
+   | User CLI  |------>|   /api/waitlist           |     | Neon Postgres |
+   |  (karst)  |       |   /api/ingest/install     | SQL | (managed,     |
+   +-----------+       |   /api/ingest/query       |---->|  serverless)  |
+                       |   /api/ingest/feedback    |     | DATABASE_URL  |
+                       |                           |     +---------------+
+                       |   /dashboard (UI)         |
+                       +-----------+---------------+
                                    ^
                                    | HTTPS + iron-session cookie
                                    |
@@ -36,18 +40,18 @@ karst is three pieces that talk over HTTPS. None of them share a database direct
 
 ### 1. Landing (`karst.dev`)
 
-- **Where**: Vercel, free Hobby tier, public repo.
-- **What**: Static-ish marketing site. Hero, features, install snippet, waitlist form.
-- **State**: None. The waitlist form POSTs cross-origin to the dashboard.
-- **Why split out**: Free hosting on Vercel, public source code is fine, decouples marketing churn from the private app.
+- **Where**: Vercel, free Hobby tier. Served from the private monorepo (live at `karst.dev` / `www.karst.dev`).
+- **What**: Static-ish marketing site. Hero, features, install snippet, waitlist + feedback forms.
+- **State**: None. The forms POST cross-origin to the dashboard.
+- **Why Vercel**: Free static hosting, instant deploys on push, decouples marketing churn from the app's data layer.
 
-### 2. Dashboard (`admin.karst.dev`)
+### 2. Dashboard (Vercel; planned `admin.karst.dev`)
 
-- **Where**: Fly.io, single Machine in `iad`, 1GB persistent volume.
+- **Where**: Vercel serverless (Next.js 15) — no always-on machine. Live at `https://upgraded-garbanzo-x2e8.vercel.app`; `admin.karst.dev` is the intended custom domain but is **not yet wired up**.
 - **What**: Next.js 15 admin app. Waitlist viewer, design-partner CRM, install/query analytics, feedback inbox, content (blog), settings.
-- **State**: SQLite at `/app/data/karst.db`. System of record for everything user-visible to the team.
+- **State**: **Neon Postgres** — managed, serverless Postgres reached over `DATABASE_URL` via a `pg` connection pool (`lib/db.ts`). System of record for everything user-visible to the team. (SQLite on a Fly volume is gone; serverless functions can't share a SQLite file.)
 - **Auth**: iron-session cookie, single admin from env. No public registration.
-- **Ingest**: `POST /api/waitlist`, `POST /api/ingest/install`, `POST /api/ingest/query`, `POST /api/ingest/error`. CORS allowlists `karst.dev` for the waitlist endpoint; ingest endpoints accept any origin but optionally require `Authorization: Bearer $KARST_INGEST_TOKEN`.
+- **Ingest**: `POST /api/waitlist`, `POST /api/ingest/install`, `POST /api/ingest/query`, `POST /api/ingest/feedback`. CORS allowlists the landing origins (`KARST_ALLOWED_ORIGINS`) for the public forms; ingest endpoints optionally require `Authorization: Bearer $KARST_INGEST_TOKEN`.
 
 ### 3. Engine / CLI (`pip install karst`)
 
@@ -80,7 +84,7 @@ What we **do not** collect:
 - IP addresses (we strip them at the dashboard before insert).
 - Anything tying an install id to a person, unless the user voluntarily signs up for the waitlist or sends feedback with an email.
 
-Emails enter the system **only** on explicit user action: waitlist signup on the landing page, or feedback submission from inside the CLI / docs site. Those tables (`waitlist`, `feedback`) are the only PII in `karst.db`.
+Emails enter the system **only** on explicit user action: waitlist signup on the landing page, or feedback submission from inside the CLI / docs site. Those tables (`signups`, `feedback`) are the only PII in the dashboard's Neon Postgres database.
 
 Today the CLI's only network activity is the one-time embedding-model download
 and whichever LLM you explicitly opt into — nothing else. If opt-out telemetry
