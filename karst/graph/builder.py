@@ -8,10 +8,11 @@ GraphStore with:
 - CONTAINS edges (File → Class/Function, Class → Method)
 - IMPORTS edges (File → File or File → Module)
 - CALLS edges (Function → Function, best-effort name match)
+- IMPLEMENTS edges (Class → Interface/BaseClass it extends/implements)
 
-Two-pass design: pass 1 adds nodes and queues raw imports + raw calls.
-Pass 2 resolves imports against the known set of File nodes and resolves
-calls against the name index in the store.
+Two-pass design: pass 1 adds nodes and queues raw imports + raw calls +
+raw supertypes. Pass 2 resolves imports against the known set of File nodes
+and resolves calls + supertypes against the name index in the store.
 """
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ from ..parser import ParsedFile, ParserRegistry, parse_file
 from ..walker import iter_source_files
 from .calls import extract_call_names
 from .imports import RawImport, extract_imports
+from .inherits import extract_supertypes
 from .store import EdgeKind, GraphStore, NodeKind, chunk_node_id, file_node_id, module_node_id
 
 
@@ -61,6 +63,7 @@ def build_graph(
     # Queued for pass 2.
     raw_imports: list[RawImport] = []
     raw_calls: list[tuple[str, list[str]]] = []   # (function node_id, [callee names])
+    raw_inherits: list[tuple[str, list[str]]] = []  # (type node_id, [supertype names])
 
     # File-path index for relative import resolution.
     file_relpaths: set[str] = set()
@@ -120,6 +123,14 @@ def build_graph(
                 if callee_names:
                     raw_calls.append((cid, callee_names))
 
+            # Queue supertype extraction for types (extends/implements).
+            if node_kind in (NodeKind.CLASS, NodeKind.INTERFACE, NodeKind.STRUCT, NodeKind.ENUM):
+                supertypes = extract_supertypes(
+                    parsed, start_byte=chunk.start_byte, end_byte=chunk.end_byte
+                )
+                if supertypes:
+                    raw_inherits.append((cid, supertypes))
+
         # Imports
         raw_imports.extend(extract_imports(parsed))
 
@@ -161,6 +172,23 @@ def build_graph(
                 if callee_id == caller_id:
                     continue
                 store.add_edge(caller_id, callee_id, EdgeKind.CALLS, weight=1.0)
+
+    # ---- pass 2: resolve inheritance (extends / implements)
+    # Index types by name so a supertype name resolves to its node(s).
+    type_name_index: dict[str, list[str]] = {}
+    for node in store.iter_nodes():
+        if node.kind in (NodeKind.CLASS, NodeKind.INTERFACE, NodeKind.STRUCT, NodeKind.ENUM):
+            type_name_index.setdefault(node.name, []).append(node.id)
+
+    for sub_id, supers in raw_inherits:
+        for name in supers:
+            for super_id in type_name_index.get(name, ()):
+                if super_id == sub_id:
+                    continue
+                # Subtype IMPLEMENTS/extends supertype: edge points sub → super,
+                # so impact (which walks INCOMING edges) on the supertype finds
+                # everything that implements/extends it.
+                store.add_edge(sub_id, super_id, EdgeKind.IMPLEMENTS, weight=0.7)
 
     result = BuildResult(
         files=files_seen,

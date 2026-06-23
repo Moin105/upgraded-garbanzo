@@ -121,8 +121,9 @@ New here? Start with whichever fits you:
    AST-aware chunk (Python, JS, TS, Go, Rust, Java); chunks are embedded into a
    local Qdrant store. Incremental: a SHA manifest + embedding cache skip
    unchanged files.
-2. **Graph** — a NetworkX knowledge graph of `CALLS` / `IMPORTS` / `CONTAINS`
-   edges powers impact analysis ("what depends on this?").
+2. **Graph** — a NetworkX knowledge graph of `CALLS` / `IMPORTS` / `CONTAINS` /
+   `IMPLEMENTS` edges powers impact analysis ("what depends on this?" — including
+   which classes implement an interface or extend a base).
 3. **Pack** — related files become named, attachable context packs (`auth`,
    `billing`). A query loads only its pack.
 4. **Serve** — the MCP server returns ranked, `file:line`-cited chunks; your

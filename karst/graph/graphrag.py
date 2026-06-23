@@ -24,10 +24,11 @@ from .store import EdgeKind, GraphStore, NodeKind
 
 # Edges to follow when expanding a vector hit. CONTAINS gives architectural
 # context (the class around the method); CALLS surfaces the dependency
-# neighborhood.
+# neighborhood; IMPLEMENTS pulls in the interface/base a class declares.
 _DEFAULT_EXPAND_KINDS: tuple[EdgeKind, ...] = (
     EdgeKind.CALLS,
     EdgeKind.CONTAINS,
+    EdgeKind.IMPLEMENTS,
 )
 
 
