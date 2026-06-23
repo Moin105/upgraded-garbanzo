@@ -110,11 +110,20 @@
   a.link-accent:hover { text-decoration: underline; }
   .doc-card { display: block; transition: border-color .15s ease, background .15s ease, transform .15s ease; }
   .doc-card:hover { border-color: var(--accent); background: rgba(129,140,248,0.05); transform: translateY(-2px); }
-  /* Mobile nav menu (CSS-only hamburger toggle; no framework needed) */
+  /* Header nav — fully self-contained responsive, so it works even before (or
+     without) the Tailwind CDN loading. Mobile-first: burger shown, desktop nav
+     hidden; flipped at >=640px. */
   #nav-toggle { display: none; }
+  .desktop-nav { display: none; }
+  .nav-burger { display: inline-flex; align-items: center; }
   #mobile-nav { display: none; flex-direction: column; }
   #nav-toggle:checked ~ #mobile-nav { display: flex; }
-  @media (min-width: 640px) { .nav-burger { display: none; } #mobile-nav { display: none !important; } }
+  #mobile-nav a { display: block; padding: 10px 0; }
+  @media (min-width: 640px) {
+    .desktop-nav { display: flex; }
+    .nav-burger { display: none; }
+    #mobile-nav { display: none !important; }
+  }
 </style>
 <script type="application/ld+json">
 {
@@ -169,23 +178,23 @@
       <span class="text-lg font-semibold tracking-tight">karst</span>
     </a>
     <!-- desktop nav -->
-    <nav class="hidden sm:flex items-center gap-6 text-sm text-dim">
+    <nav class="desktop-nav items-center gap-6 text-sm text-dim">
       <a href="/how-it-works.html" class="hover:text-white">How it works</a>
       <a href="#install" class="hover:text-white">Install</a>
       <a href="#guides" class="hover:text-white">Guides</a>
       <a href="https://pypi.org/project/karst/" class="hover:text-white">PyPI</a>
     </nav>
     <!-- mobile hamburger -->
-    <label for="nav-toggle" class="nav-burger cursor-pointer p-2 -mr-2 text-dim hover:text-white" role="button" aria-label="Toggle menu" tabindex="0">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    <label for="nav-toggle" class="nav-burger" role="button" aria-label="Toggle menu" tabindex="0" style="cursor:pointer;padding:8px;margin-right:-8px;color:var(--text-dim)">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
     </label>
   </div>
   <!-- mobile dropdown menu -->
-  <nav id="mobile-nav" class="sm:hidden border-t border-default px-5 py-2 text-dim">
-    <a href="/how-it-works.html" class="block py-2.5 hover:text-white">How it works</a>
-    <a href="#install" class="block py-2.5 hover:text-white">Install</a>
-    <a href="#guides" class="block py-2.5 hover:text-white">Guides</a>
-    <a href="https://pypi.org/project/karst/" class="block py-2.5 hover:text-white">PyPI</a>
+  <nav id="mobile-nav" class="text-dim" style="border-top:1px solid var(--border);padding:6px 20px 10px">
+    <a href="/how-it-works.html" class="hover:text-white">How it works</a>
+    <a href="#install" class="hover:text-white">Install</a>
+    <a href="#guides" class="hover:text-white">Guides</a>
+    <a href="https://pypi.org/project/karst/" class="hover:text-white">PyPI</a>
   </nav>
 </header>
 
