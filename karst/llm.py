@@ -39,6 +39,12 @@ class LLMResponse:
     text: str
     provider: str
     model: str
+    # Real token usage as reported by the provider's API response (None when the
+    # endpoint doesn't return a usage block — e.g. some local OpenAI-compatible
+    # servers). When present, the cost meter prints exact figures instead of the
+    # chars/4 estimate.
+    input_tokens: int | None = None
+    output_tokens: int | None = None
 
 
 class LLM(ABC):
@@ -88,7 +94,14 @@ class AnthropicLLM(LLM):
             text = getattr(block, "text", None)
             if text:
                 parts.append(text)
-        return LLMResponse(text="".join(parts), provider=self.provider, model=self.model)
+        usage = getattr(resp, "usage", None)
+        return LLMResponse(
+            text="".join(parts),
+            provider=self.provider,
+            model=self.model,
+            input_tokens=getattr(usage, "input_tokens", None),
+            output_tokens=getattr(usage, "output_tokens", None),
+        )
 
     def generate_structured(
         self,
@@ -160,7 +173,14 @@ class OpenAILLM(LLM):
             ],
         )
         text = resp.choices[0].message.content or ""
-        return LLMResponse(text=text, provider=self.provider, model=self.model)
+        usage = getattr(resp, "usage", None)
+        return LLMResponse(
+            text=text,
+            provider=self.provider,
+            model=self.model,
+            input_tokens=getattr(usage, "prompt_tokens", None),
+            output_tokens=getattr(usage, "completion_tokens", None),
+        )
 
     def generate_structured(
         self,
