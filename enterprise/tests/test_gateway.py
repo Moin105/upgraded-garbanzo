@@ -4,6 +4,7 @@ ships with mcp/fastmcp)."""
 from __future__ import annotations
 
 import asyncio
+import json
 
 import pytest
 
@@ -51,6 +52,29 @@ def test_wildcard_scope(tmp_path):
     raw, _ = store.create_key("acme", scopes=("*",))
     p = store.verify(raw)
     assert p.may("anything") and p.may("search_code")
+
+
+def test_may_access_repo():
+    from enterprise.gateway.keys import Principal
+
+    p = Principal(0, "acme", "x", ("search_code",), repos=("acme-app", "billing"))
+    assert p.may_access_repo("/srv/repos/acme-app")       # by full path's basename
+    assert p.may_access_repo("acme-app")                  # by bare name
+    assert p.may_access_repo("C:\\repos\\billing")        # windows path
+    assert not p.may_access_repo("/srv/repos/other-team")  # not in the allowlist
+    assert not p.may_access_repo(None)                     # scoped key must name a repo
+
+    star = Principal(0, "acme", "x", ("*",), repos=("*",))
+    assert star.may_access_repo("/anything") and star.may_access_repo(None)
+
+
+def test_repos_round_trip(tmp_path):
+    store = KeyStore(tmp_path / "g.db")
+    raw, _ = store.create_key("acme", repos=("acme-app", "acme-api"))
+    assert store.verify(raw).repos == ("acme-app", "acme-api")
+    assert store.list_keys("acme")[0].repos == ("acme-app", "acme-api")
+    raw2, _ = store.create_key("ops")                      # default = all
+    assert store.verify(raw2).repos == ("*",)
 
 
 # ---- usage -----------------------------------------------------------------
@@ -282,3 +306,102 @@ def test_middleware_accepts_oidc_token(tmp_path):
     bad = {"type": "http", "method": "POST", "path": "/mcp",
            "headers": [(b"authorization", b"Bearer nope")]}
     assert _run_asgi(gw, bad)[0]["status"] == 401
+
+
+# ---- repo + scope enforcement (multi-tenant isolation) ---------------------
+
+def _run_asgi_with_body(app, scope, body: bytes):
+    """Drive an ASGI app once, delivering `body` as the request payload."""
+    sent: list[dict] = []
+    state = {"done": False}
+
+    async def receive():
+        if not state["done"]:
+            state["done"] = True
+            return {"type": "http.request", "body": body, "more_body": False}
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(msg):
+        sent.append(msg)
+
+    asyncio.run(app(scope, receive, send))
+    return sent
+
+
+def _tools_call(raw, tool, repo):
+    body = json.dumps({
+        "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+        "params": {"name": tool, "arguments": {"repo_path": repo}},
+    }).encode()
+    scope = {"type": "http", "method": "POST", "path": "/mcp",
+             "headers": [(b"authorization", f"Bearer {raw}".encode())]}
+    return scope, body
+
+
+def test_repo_and_scope_enforcement(tmp_path):
+    pytest.importorskip("starlette")
+    from enterprise.gateway.middleware import GatewayAuth
+
+    keys = KeyStore(tmp_path / "g.db")
+    usage = UsageLog(tmp_path / "u.db")
+    # key scoped to ONE repo and only two tools
+    raw, _ = keys.create_key("acme", scopes=("search_code", "list_packs"), repos=("acme-app",))
+
+    seen = {"n": 0, "body": None}
+
+    async def inner(scope, receive, send):
+        seen["n"] += 1
+        m = await receive()
+        seen["body"] = m["body"]
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b"ok"})
+
+    gw = GatewayAuth(inner, keys=keys, usage=usage)
+
+    # 1) allowed repo + allowed tool -> 200, inner called, body replayed intact
+    scope, body = _tools_call(raw, "search_code", "/srv/repos/acme-app")
+    sent = _run_asgi_with_body(gw, scope, body)
+    assert sent[0]["status"] == 200 and seen["n"] == 1
+    assert seen["body"] == body                                  # replayed unchanged
+
+    # 2) DIFFERENT team's repo -> 403, inner NOT called (the isolation guarantee)
+    scope, body = _tools_call(raw, "search_code", "/srv/repos/other-team")
+    sent = _run_asgi_with_body(gw, scope, body)
+    assert sent[0]["status"] == 403 and seen["n"] == 1
+
+    # 3) tool outside the key's scopes -> 403
+    scope, body = _tools_call(raw, "find_impact", "/srv/repos/acme-app")
+    sent = _run_asgi_with_body(gw, scope, body)
+    assert sent[0]["status"] == 403 and seen["n"] == 1
+
+    # 4) a wildcard key can reach any repo/tool
+    raw2, _ = keys.create_key("ops", scopes=("*",), repos=("*",))
+    scope, body = _tools_call(raw2, "find_impact", "/srv/repos/anything")
+    sent = _run_asgi_with_body(gw, scope, body)
+    assert sent[0]["status"] == 200 and seen["n"] == 2
+
+    # denied calls are recorded as errors in the audit log, with the real tool
+    assert usage.summary(team_id="acme")["errors"] == 2
+
+
+def test_protocol_methods_pass_through(tmp_path):
+    pytest.importorskip("starlette")
+    from enterprise.gateway.middleware import GatewayAuth
+
+    keys = KeyStore(tmp_path / "g.db")
+    usage = UsageLog(tmp_path / "u.db")
+    raw, _ = keys.create_key("acme", scopes=("search_code",), repos=("acme-app",))
+
+    async def inner(scope, receive, send):
+        await receive()
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b"ok"})
+
+    gw = GatewayAuth(inner, keys=keys, usage=usage)
+    # tools/list is a protocol method, not a tools/call — must pass even for a
+    # tightly-scoped key.
+    body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/list"}).encode()
+    scope = {"type": "http", "method": "POST", "path": "/mcp",
+             "headers": [(b"authorization", f"Bearer {raw}".encode())]}
+    sent = _run_asgi_with_body(gw, scope, body)
+    assert sent[0]["status"] == 200

@@ -20,10 +20,9 @@ Enterprise mode monetizes that edge for teams who need:
 
 - **Shared context, not per-dev silos** — one team publishes packs, everyone
   pulls them. Curation effort is spent once.
-- **Governance** — who called what, how many tokens it cost: usage + audit
-  metering per team, on-prem. *(Per-team **repo access control** — restricting
-  which repos a team key can query — is on the roadmap; today the gateway does
-  authentication + metering, not tenant data isolation. See [DEPLOY.md](DEPLOY.md).)*
+- **Governance** — per-team **repo + tool access control** (a key/JWT scoped to
+  `acme-app` can't read another team's repo — enforced at the call level), plus
+  usage + audit metering of who called what, on-prem. See [DEPLOY.md](DEPLOY.md).
 - **A single endpoint** — one authenticated MCP gateway the whole org points
   their AI tools at, instead of every dev running their own server.
 
@@ -57,9 +56,10 @@ audited**, and access is **scoped**.
    `python -m enterprise.gateway.cli serve`.
 3. **Team pack libraries** ✅ — `gateway/packs.py`: publish/pull **versioned**
    shared pack definitions per team, so curation is done once, not per-dev.
-4. **SSO + RBAC** — ✅ **OIDC/SSO**: accept enterprise-IdP JWTs alongside API
-   keys (`gateway/oidc.py`, enable with `KARST_OIDC_ISSUER`). Scopes are carried
-   per principal; per-MCP-tool *enforcement* + per-repo policy + SCIM are next.
+4. **SSO + RBAC** ✅ — **OIDC/SSO** (`gateway/oidc.py`, enable with
+   `KARST_OIDC_ISSUER`) accepts enterprise-IdP JWTs alongside API keys, and
+   **per-team repo + per-tool access is enforced** at the call level
+   (`gateway/middleware.py` gates every `tools/call`). SCIM provisioning is next.
 5. **Self-hosted deploy** ✅ — Docker image + Compose (gateway + Postgres),
    `DATABASE_URL` Postgres backend, env-config. See [DEPLOY.md](DEPLOY.md).
 6. **Admin UI** — extend the existing dashboard with key management, usage

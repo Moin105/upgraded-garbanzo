@@ -40,6 +40,10 @@ def main(argv: list[str] | None = None) -> int:
     p_add.add_argument("--label", default="")
     p_add.add_argument("--scopes", default=",".join(DEFAULT_SCOPES),
                        help="Comma-separated tool scopes, or '*' for all.")
+    p_add.add_argument("--repos", default="*",
+                       help="Comma-separated repo names this key may query, or "
+                            "'*' for all. Scope a team to its repos for isolation "
+                            "on a shared host, e.g. --repos acme-app,acme-api.")
 
     p_list = keys_sub.add_parser("list", help="List keys.")
     p_list.add_argument("--team")
@@ -84,8 +88,9 @@ def main(argv: list[str] | None = None) -> int:
         try:
             if args.keys_command == "add":
                 scopes = tuple(s.strip() for s in args.scopes.split(",") if s.strip())
-                raw, kid = store.create_key(args.team, label=args.label, scopes=scopes)
-                print(f"Created key #{kid} for team '{args.team}'.")
+                repos = tuple(s.strip() for s in args.repos.split(",") if s.strip()) or ("*",)
+                raw, kid = store.create_key(args.team, label=args.label, scopes=scopes, repos=repos)
+                print(f"Created key #{kid} for team '{args.team}'  (repos: {','.join(repos)}).")
                 print("\n  " + raw + "\n")
                 print("Store it now — it will NOT be shown again.")
                 return 0
@@ -94,10 +99,11 @@ def main(argv: list[str] | None = None) -> int:
                 if not rows:
                     print("No keys.")
                     return 0
-                print(f"{'ID':>3}  {'TEAM':<16} {'PREFIX':<14} {'LABEL':<20} STATUS  SCOPES")
+                print(f"{'ID':>3}  {'TEAM':<16} {'PREFIX':<14} {'LABEL':<16} STATUS  {'REPOS':<18} SCOPES")
                 for k in rows:
                     status = "revoked" if k.revoked_at else "active "
-                    print(f"{k.id:>3}  {k.team_id:<16} {k.prefix:<14} {k.label:<20} {status} {','.join(k.scopes)}")
+                    print(f"{k.id:>3}  {k.team_id:<16} {k.prefix:<14} {k.label:<16} {status} "
+                          f"{','.join(k.repos):<18} {','.join(k.scopes)}")
                 return 0
             if args.keys_command == "revoke":
                 ok = store.revoke(args.id)

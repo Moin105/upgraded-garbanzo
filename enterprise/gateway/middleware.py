@@ -8,6 +8,7 @@ This is the seam where the free core and the enterprise layer meet: the inner
 """
 from __future__ import annotations
 
+import json
 import time
 from typing import Awaitable, Callable
 
@@ -18,6 +19,24 @@ from .usage import UsageLog
 Scope = dict
 Receive = Callable[[], Awaitable[dict]]
 Send = Callable[[dict], Awaitable[None]]
+
+
+def _parse_call(body: bytes) -> tuple[str | None, str | None, str | None, object]:
+    """Pull (method, tool, repo_path, rpc_id) from a JSON-RPC MCP request body.
+    Returns Nones for anything we don't recognise (let the inner app handle it)."""
+    try:
+        msg = json.loads(body or b"{}")
+    except Exception:
+        return (None, None, None, None)
+    if not isinstance(msg, dict):
+        return (None, None, None, None)
+    method = msg.get("method")
+    rpc_id = msg.get("id")
+    if method != "tools/call":
+        return (method, None, None, rpc_id)
+    params = msg.get("params") or {}
+    args = params.get("arguments") or {}
+    return (method, params.get("name"), args.get("repo_path"), rpc_id)
 
 
 class GatewayAuth:
@@ -64,22 +83,68 @@ class GatewayAuth:
             await JSONResponse({"error": "unauthorized"}, status_code=401)(scope, receive, send)
             return
 
-        # Hand the principal down to the app (so tool dispatch can enforce
-        # scopes / pick the team's repos), and meter the call.
+        # Buffer the request body so we can (a) authorize the call against the
+        # principal and (b) replay it unchanged to the inner MCP app.
+        buffered: list[dict] = []
+        body = b""
+        while True:
+            m = await receive()
+            buffered.append(m)
+            if m.get("type") == "http.request":
+                body += m.get("body", b"")
+                if not m.get("more_body", False):
+                    break
+            else:
+                break  # http.disconnect, etc.
+
+        method, tool, repo, rpc_id = _parse_call(body)
+
+        # Authorization: gate tools/call by scope AND repo. Protocol methods
+        # (initialize, tools/list, ping, notifications/*) pass through.
+        denial: str | None = None
+        if method == "tools/call":
+            if tool and not principal.may(tool):
+                denial = f"key not permitted to call tool '{tool}'"
+            elif not principal.may_access_repo(repo):
+                denial = f"key not permitted to access repo '{repo}'"
+
         scope = dict(scope)
         scope["karst_principal"] = principal
         start = time.monotonic()
+
+        if denial is not None:
+            await JSONResponse(
+                {"jsonrpc": "2.0", "id": rpc_id,
+                 "error": {"code": -32001, "message": f"forbidden: {denial}"}},
+                status_code=403,
+            )(scope, receive, send)
+            self._usage.log(
+                key_id=principal.key_id, team_id=principal.team_id,
+                tool=tool or path, repo=repo,
+                latency_ms=int((time.monotonic() - start) * 1000), ok=False,
+            )
+            return
+
+        # Replay the buffered body to the inner app, then defer to live receive.
+        idx = 0
+
+        async def replay() -> dict:
+            nonlocal idx
+            if idx < len(buffered):
+                msg = buffered[idx]
+                idx += 1
+                return msg
+            return await receive()
+
         ok = True
         try:
-            await self._app(scope, receive, send)
+            await self._app(scope, replay, send)
         except Exception:
             ok = False
             raise
         finally:
             self._usage.log(
-                key_id=principal.key_id,
-                team_id=principal.team_id,
-                tool=path,
-                latency_ms=int((time.monotonic() - start) * 1000),
-                ok=ok,
+                key_id=principal.key_id, team_id=principal.team_id,
+                tool=tool or path, repo=repo,
+                latency_ms=int((time.monotonic() - start) * 1000), ok=ok,
             )

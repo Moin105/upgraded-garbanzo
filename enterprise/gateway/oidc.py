@@ -33,6 +33,7 @@ class OidcConfig:
     jwks_url: str | None = None
     team_claim: str = "team"
     scopes_claim: str = "scope"
+    repos_claim: str = "repos"
     algorithms: tuple[str, ...] = ("RS256", "RS512", "ES256")
 
 
@@ -46,6 +47,16 @@ def _scopes_from(value) -> tuple[str, ...]:
     if isinstance(value, (list, tuple)):
         return tuple(str(s) for s in value if s)
     return ()
+
+
+def _repos_from(value) -> tuple[str, ...]:
+    """Allowed repos from a claim. Absent -> "*" (all repos for the team); the
+    team_id is the tenant boundary, repos is the optional finer control."""
+    if isinstance(value, str):
+        return tuple(s for s in value.replace(",", " ").split() if s) or ("*",)
+    if isinstance(value, (list, tuple)):
+        return tuple(str(s) for s in value if s) or ("*",)
+    return ("*",)
 
 
 class OidcVerifier:
@@ -75,6 +86,7 @@ class OidcVerifier:
                 jwks_url=os.environ.get("KARST_OIDC_JWKS_URL") or None,
                 team_claim=os.environ.get("KARST_OIDC_TEAM_CLAIM", "team"),
                 scopes_claim=os.environ.get("KARST_OIDC_SCOPES_CLAIM", "scope"),
+                repos_claim=os.environ.get("KARST_OIDC_REPOS_CLAIM", "repos"),
             )
         )
 
@@ -124,6 +136,7 @@ class OidcVerifier:
         if not team:
             return None
         scopes = _scopes_from(claims.get(self.config.scopes_claim))
+        repos = _repos_from(claims.get(self.config.repos_claim))
         label = str(
             claims.get("email")
             or claims.get("preferred_username")
@@ -131,4 +144,4 @@ class OidcVerifier:
             or "oidc"
         )
         # key_id 0 marks a non-key (SSO) principal in the usage/audit log.
-        return Principal(key_id=0, team_id=str(team), label=label, scopes=scopes)
+        return Principal(key_id=0, team_id=str(team), label=label, scopes=scopes, repos=repos)

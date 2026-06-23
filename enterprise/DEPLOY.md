@@ -57,6 +57,7 @@ need; run `keys add` as a one-off `Job` or `kubectl exec`.
 | `KARST_OIDC_JWKS_URL` | Explicit JWKS URL (else resolved via OIDC discovery) | discovery |
 | `KARST_OIDC_TEAM_CLAIM` | JWT claim holding the team/org id | `team` |
 | `KARST_OIDC_SCOPES_CLAIM` | JWT claim holding scopes/roles | `scope` |
+| `KARST_OIDC_REPOS_CLAIM` | JWT claim holding allowed repo names (`*` = all) | `repos` |
 
 ## Enterprise SSO (OIDC)
 
@@ -74,16 +75,25 @@ Example (Compose): uncomment the `KARST_OIDC_*` block in `docker-compose.yml`.
 Every non-health request must present `Authorization: Bearer <token>` where the
 token is **either**:
 - a **per-team API key** (`kst_sk_…`) created via `keys add` — hashed at rest,
-  revocable, scoped; or
+  revocable, **tool- and repo-scoped**; or
 - an **SSO JWT** from your configured OIDC issuer (signature, issuer, **audience**
   and expiry are all verified; `KARST_OIDC_AUDIENCE` is required).
 
-> ⚠️ **Tenant isolation is not yet enforced.** Authentication is real, but today
-> *any* valid team key/JWT can call the tools against *any* repo that has been
-> indexed on the gateway host — the gateway does **authentication + metering, not
-> per-team repo data isolation**. Deploy one gateway per trust boundary (e.g. per
-> team/project), or wait for repo-scoped access control (roadmap below). Don't
-> rely on it to keep team A's code away from team B's key on a shared host.
+**Tenant isolation is enforced at the call level.** The gateway parses each
+`tools/call` and rejects it (HTTP 403) unless the principal's **scopes** allow the
+tool *and* its **repos** allow the requested `repo_path`. So a key scoped to
+`acme-app` cannot read `other-team-app` on a shared host:
+
+```bash
+# this key can only call search_code/list_packs, and only against acme's repos
+docker compose exec gateway python -m enterprise.gateway.cli keys add \
+  --team acme --label "acme bot" --scopes search_code,list_packs --repos acme-app,acme-api
+```
+
+Keys default to `--repos '*'` (all repos) for single-team/host convenience — set
+`--repos` for per-team isolation. For SSO, a `repos` (and `scope`) claim on the JWT
+carries the same limits; absent a `repos` claim a token gets all repos for its team
+(scopes still gate the tools, and SSO tokens need an explicit `scope` claim).
 
 Every call is recorded (team, tool path, latency, ok) for usage + audit:
 
@@ -107,15 +117,10 @@ the attestation + offline-install pack.
 - **Throughput:** Postgres uses a short-lived connection per operation today —
   correct under concurrency; wire `psycopg_pool` in `gateway/db.py` for very high
   request rates.
-- **Not yet built (roadmap), in priority order:**
-  1. **Per-team repo access control** — restrict which repos a team key/JWT may
-     query (today there is none; see the Auth-model warning above). Needs the
-     gateway to parse the MCP request body for the tool + `repo_path` and gate it
-     against the principal. **This is the gap to close before relying on the
-     gateway for multi-team isolation.**
-  2. Per-MCP-tool **scope enforcement** (scopes are attached + metered but not yet
-     gated at dispatch).
-  3. SCIM provisioning and a SIEM-exportable, signed audit log.
-
-  If your security review requires any of these today, raise it before deploying —
-  or deploy one gateway per team as a clean interim isolation boundary.
+- **Enforced today:** per-team **repo access control** + per-tool **scope**
+  enforcement (the gateway parses each `tools/call` and 403s anything outside the
+  principal's repos/scopes), and the usage/audit log records the real tool + repo.
+- **Not yet built (roadmap):** SCIM auto-provisioning, and a cryptographically
+  **signed, SIEM-exportable** audit log (the usage log is exportable from Postgres
+  today, but not tamper-evident). If your review requires these, raise it before
+  deploying.
