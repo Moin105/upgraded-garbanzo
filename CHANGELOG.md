@@ -2,6 +2,15 @@
 
 All notable changes to **karst**. This project uses semantic-ish versioning.
 
+## Unreleased
+
+- **Interface/inheritance edges in the graph.** A new `IMPLEMENTS` edge links a
+  class to the interface it implements or the base it extends (Python base
+  classes, JS/TS `extends`/`implements`, TS `interface … extends`). So
+  `karst impact <Interface>` now lists every class that implements it — and
+  GraphRAG pulls a class's interface in as context. Name-only resolution like
+  CALLS (Python + JS/TS); rebuild with `karst graph-index` to populate it.
+
 ## 0.2.7
 
 **Polish from an external test report (v0.2.6).**

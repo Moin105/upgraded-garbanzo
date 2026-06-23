@@ -43,6 +43,7 @@ class EdgeKind(str, Enum):
     IMPORTS = "imports"            # File → File/Module
     CALLS = "calls"                # Function → Function (best-effort name match)
     DEFINES = "defines"            # alias of CONTAINS for Class → Method
+    IMPLEMENTS = "implements"      # Class → Interface/BaseClass (extends/implements)
     READS = "reads"                # reserved
     EXPOSED_BY = "exposed_by"      # reserved
     BACKS = "backs"                # reserved

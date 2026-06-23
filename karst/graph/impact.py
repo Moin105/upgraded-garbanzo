@@ -31,6 +31,7 @@ from .store import EdgeKind, GraphStore, NodeKind, file_node_id
 # code are the strongest signals; imports are softer.
 _EDGE_WEIGHT: dict[EdgeKind, float] = {
     EdgeKind.CALLS: 1.0,
+    EdgeKind.IMPLEMENTS: 0.7,  # changing a base/interface strongly affects subtypes
     EdgeKind.CONTAINS: 0.6,
     EdgeKind.DEFINES: 0.6,
     EdgeKind.IMPORTS: 0.5,
@@ -76,7 +77,9 @@ def analyze_impact(
     *,
     targets: Iterable[str],
     max_depth: int = 3,
-    kinds: tuple[EdgeKind, ...] = (EdgeKind.CALLS, EdgeKind.IMPORTS, EdgeKind.CONTAINS, EdgeKind.DEFINES),
+    kinds: tuple[EdgeKind, ...] = (
+        EdgeKind.CALLS, EdgeKind.IMPORTS, EdgeKind.CONTAINS, EdgeKind.DEFINES, EdgeKind.IMPLEMENTS,
+    ),
 ) -> ImpactReport:
     """Run impact analysis from a set of node ids.
 
