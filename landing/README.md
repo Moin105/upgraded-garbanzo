@@ -19,7 +19,8 @@ Files in this folder:
 | File              | Purpose                                                            |
 |-------------------|--------------------------------------------------------------------|
 | `index.html`      | The whole page. Inline SVG logo, inline JS for the waitlist form.  |
-| `og-image.svg`    | 1200x630 OG/Twitter card image.                                    |
+| `og-image.png`    | 1200x630 OG/Twitter card image (the one referenced in meta tags).  |
+| `og-image.svg`    | Editable source for `og-image.png`. Re-export to PNG after edits.  |
 | `robots.txt`      | Allow all crawlers.                                                |
 | `vercel.json`     | Clean URLs + security headers (X-Frame-Options, Referrer-Policy).  |
 | `package.json`    | Marks the folder as a project so Vercel auto-detects it. No deps.  |

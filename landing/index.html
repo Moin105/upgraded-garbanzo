@@ -8,12 +8,12 @@
 
 <meta property="og:title" content="karst — code context for AI dev tools" />
 <meta property="og:description" content="MCP-native code context. 343s to 2.3s incremental reindex, $0.019 per query on Sonnet 4.6, 60% fewer tokens." />
-<meta property="og:image" content="/og-image.svg" />
+<meta property="og:image" content="/og-image.png" />
 <meta property="og:type" content="website" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="karst — code context for AI dev tools" />
 <meta name="twitter:description" content="MCP-native code context. 343s to 2.3s incremental reindex, $0.019 per query on Sonnet 4.6, 60% fewer tokens." />
-<meta name="twitter:image" content="/og-image.svg" />
+<meta name="twitter:image" content="/og-image.png" />
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -159,9 +159,20 @@
       your code never leaves your machine.
     </p>
     <div class="mt-8 flex items-center justify-center gap-3 flex-wrap">
-      <a href="#install" class="btn-primary">Install free</a>
+      <a href="cursor://anysphere.cursor-deeplink/mcp/install?name=karst&amp;config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJrYXJzdCIsImthcnN0LW1jcCJdfQ=="
+         class="btn-primary" title="Add karst to Cursor — one click">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 3l16 9-7 1.5L9.5 20 4 3z" fill="currentColor"/></svg>
+        Add to Cursor
+      </a>
+      <a href="#install" class="btn-ghost">Install free</a>
       <a href="https://pypi.org/project/karst/" class="btn-ghost">View on PyPI</a>
     </div>
+    <p class="mt-3 text-xs text-dim">
+      Using something else?
+      <a href="https://insiders.vscode.dev/redirect/mcp/install?name=karst&amp;config=%7B%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22--from%22%2C%22karst%22%2C%22karst-mcp%22%5D%7D" class="link-accent">Add to VS Code</a>
+      &middot;
+      <a href="/guides/CONNECT.html" class="link-accent">Claude, Windsurf, Zed &amp; more</a>
+    </p>
   </div>
 </section>
 
@@ -226,17 +237,15 @@
   <h2 class="text-3xl font-semibold tracking-tight">Install in 60 seconds</h2>
   <p class="text-dim mt-2 max-w-2xl">Python 3.10+. Works on macOS, Linux, WSL.</p>
   <div class="code-bg rounded-xl mt-6 p-5 mono text-sm overflow-x-auto border border-default">
-<pre class="text-slate-200"><span class="text-dim"># 1. install</span>
+<pre class="text-slate-200"><span class="text-dim"># 1. install  (or: uv tool install karst)</span>
 pip install karst
 
-<span class="text-dim"># 2. index your repo (one-time, ~5 min on a large codebase)</span>
-karst index ./my-repo
+<span class="text-dim"># 2. from your repo folder &mdash; index + suggest packs in one step</span>
+cd my-repo
+karst quickstart
 
-<span class="text-dim"># 3. suggest packs, review, apply</span>
-karst packs --storage ~/.karst/my-repo suggest ./my-repo --apply --retag
-
-<span class="text-dim"># 4. ask anything &mdash; cost is printed before the call</span>
-karst ask <span class="accent-2">"How does auth work?"</span> --storage ~/.karst/my-repo</pre>
+<span class="text-dim"># 3. ask anything &mdash; cost is printed before the call</span>
+karst ask <span class="accent-2">"How does auth work?"</span></pre>
   </div>
   <p class="mt-4 text-sm text-dim">
     Or wire it into your AI tool:
