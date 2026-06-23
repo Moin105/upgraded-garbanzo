@@ -182,6 +182,7 @@
       <a href="/how-it-works.html" class="hover:text-white">How it works</a>
       <a href="#install" class="hover:text-white">Install</a>
       <a href="#guides" class="hover:text-white">Guides</a>
+      <a href="#teams" class="hover:text-white">Teams</a>
       <a href="https://pypi.org/project/karst/" class="hover:text-white">PyPI</a>
     </nav>
     <!-- mobile hamburger -->
@@ -194,6 +195,7 @@
     <a href="/how-it-works.html" class="hover:text-white">How it works</a>
     <a href="#install" class="hover:text-white">Install</a>
     <a href="#guides" class="hover:text-white">Guides</a>
+      <a href="#teams" class="hover:text-white">Teams</a>
     <a href="https://pypi.org/project/karst/" class="hover:text-white">PyPI</a>
   </nav>
 </header>
@@ -364,6 +366,44 @@ karst ask <span class="accent-2">"How does auth work?"</span></pre>
       <span class="link-accent text-sm mt-4 inline-block">Read &rarr;</span>
     </a>
 
+  </div>
+</section>
+
+<!-- For teams -->
+<section id="teams" class="max-w-6xl mx-auto px-5 py-20">
+  <div class="surface rounded-2xl p-8 md:p-12">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+      <div>
+        <span class="pill mono">For teams &amp; regulated orgs</span>
+        <h2 class="mt-5 text-3xl md:text-4xl font-semibold tracking-tight">One governed karst for your whole org</h2>
+        <p class="mt-4 text-dim leading-relaxed">
+          The free CLI is per-developer. The <span class="text-white">enterprise gateway</span> is one
+          authenticated, metered MCP endpoint every dev's AI tool points at — self-hosted inside your
+          perimeter, so code never leaves the building.
+        </p>
+        <div class="mt-6 space-y-4">
+          <div class="flex gap-3">
+            <span class="accent-2 mono text-sm mt-0.5">01</span>
+            <p class="text-sm leading-relaxed"><span class="text-white font-medium">Per-team isolation, enforced.</span> <span class="text-dim">A key scoped to its repos is checked on every call — team A can't read team B's code. SSO (OIDC) or API keys.</span></p>
+          </div>
+          <div class="flex gap-3">
+            <span class="accent-2 mono text-sm mt-0.5">02</span>
+            <p class="text-sm leading-relaxed"><span class="text-white font-medium">Usage &amp; audit metering.</span> <span class="text-dim">Every call logged with team, tool, repo — who touched what, on-prem.</span></p>
+          </div>
+          <div class="flex gap-3">
+            <span class="accent-2 mono text-sm mt-0.5">03</span>
+            <p class="text-sm leading-relaxed"><span class="text-white font-medium">Deploy in minutes.</span> <span class="text-dim">Docker Compose + PostgreSQL, air-gappable, no telemetry, source you can audit.</span></p>
+          </div>
+        </div>
+        <div class="mt-8 flex items-center gap-3 flex-wrap">
+          <a href="mailto:karst.support@gmail.com?subject=karst%20for%20teams" class="btn-primary">Talk to us about a team deployment</a>
+          <a href="/guides/SELF-HOSTED.html" class="btn-ghost">Self-hosted guide</a>
+        </div>
+      </div>
+      <div class="rounded-xl overflow-hidden border border-default code-bg">
+        <img src="/enterprise-isolation.svg" alt="Animation: a team's API key is allowed to read its own repo but blocked with 403 from another team's repo" width="1600" height="900" class="w-full h-auto" loading="lazy" />
+      </div>
+    </div>
   </div>
 </section>
 
