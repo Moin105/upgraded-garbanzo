@@ -64,10 +64,12 @@ To run on a machine that never has internet:
 2. Copy that `~/.karst/models` folder to the air-gapped machine (same path).
 3. On the air-gapped box, force offline mode so nothing is ever fetched:
    ```bash
-   export HF_HUB_OFFLINE=1               # never reach out for a model
-   export HF_HUB_DISABLE_TELEMETRY=1     # belt-and-suspenders: no HF ping
+   export KARST_OFFLINE=1                # one switch: blocks all model downloads
    export KARST_LLM_PROVIDER=local       # with a local model already pulled
    ```
+   `KARST_OFFLINE=1` is shorthand — karst sets `HF_HUB_OFFLINE` and
+   `TRANSFORMERS_OFFLINE` for you so the embedder only ever reads the cached
+   model. (You can still set those two directly if you prefer.)
 
 From there, indexing, retrieval, and AI answers all run with **zero** outbound
 connections.
@@ -80,6 +82,7 @@ connections.
 | `KARST_LLM_MODEL` | model name for answers | `llama3.1` (local) |
 | `KARST_LLM_BASE_URL` | local server endpoint | `http://localhost:11434/v1` |
 | `KARST_LLM_API_KEY` | only if your local server needs one | `local` (dummy) |
+| `KARST_OFFLINE` | air-gap switch: blocks all embedding-model downloads (sets `HF_HUB_OFFLINE` + `TRANSFORMERS_OFFLINE`) | unset |
 | `HF_HUB_OFFLINE` | block any model download (air-gap) | unset |
 
 The same flags exist per-command: `karst ask "…" --llm local --model <name>`.

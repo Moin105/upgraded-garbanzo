@@ -2,6 +2,21 @@
 
 All notable changes to **karst**. This project uses semantic-ish versioning.
 
+## Unreleased
+
+**Polish from an external test report (v0.2.6).**
+
+- **`ask` now explains zero results.** When a query matches nothing, karst says
+  so — and if an active pack filter is the cause, it points you at `--all-packs`
+  (or `karst packs detach`) instead of printing an empty section.
+- **Cost meter reflects the real provider.** The token/cost line no longer always
+  quotes Anthropic pricing: local models show "no API cost", OpenAI/Anthropic
+  show their own rates, and the `--no-llm` figure is labelled `est.` so it's
+  clearly hypothetical.
+- **`KARST_OFFLINE=1`** — one switch for air-gapped installs; sets
+  `HF_HUB_OFFLINE` + `TRANSFORMERS_OFFLINE` before the embedder loads so it only
+  ever reads a pre-seeded model cache. See [Self-hosted](docs/SELF-HOSTED.md).
+
 ## 0.2.6
 
 **Run fully on-prem — for teams whose code can't go to the cloud.**
