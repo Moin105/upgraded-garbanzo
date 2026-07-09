@@ -14,6 +14,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from dataclasses import dataclass
 
+from .._tsapi import wrap_root
 from ..parser import ParsedFile
 
 
@@ -35,7 +36,7 @@ def extract_imports(parsed: ParsedFile) -> list[RawImport]:
 # ---------------------------------------------------------------- Python
 
 def _python_imports(parsed: ParsedFile) -> Iterator[RawImport]:
-    root = parsed.tree.root_node()
+    root = wrap_root(parsed.tree)
     src = parsed.source
     yield from _python_walk(root, parsed.relpath, src)
 
@@ -77,7 +78,7 @@ def _python_walk(node, importer: str, src: bytes) -> Iterator[RawImport]:
 # ---------------------------------------------------------------- JS/TS
 
 def _js_ts_imports(parsed: ParsedFile) -> Iterator[RawImport]:
-    root = parsed.tree.root_node()
+    root = wrap_root(parsed.tree)
     src = parsed.source
     yield from _js_ts_walk(root, parsed.relpath, src)
 

@@ -14,17 +14,20 @@ Design notes:
   the decorated form as the chunk and skip the inner duplicate.
 
 API note:
-- The tree-sitter Python bindings shipped with tree-sitter-language-pack on
-  Windows expose Node attributes as methods (e.g. `node.kind()`,
-  `node.child_count()`, `node.start_position().row`). The helpers in this
-  module call those methods directly rather than the property-style API of
-  upstream py-tree-sitter, so we work with whichever wheel is installed.
+- tree-sitter node access differs across wheels: upstream py-tree-sitter (CI /
+  Linux / macOS) uses PROPERTIES (`node.type`, `node.child_count`,
+  `node.start_point`), while some tree-sitter-language-pack wheels on Windows use
+  METHODS with a couple of different names (`node.kind()`, `node.start_position()`).
+  `wrap_root` (see `_tsapi`) adapts either into the single method-style API this
+  module uses (`.kind()`, `.child(i)`, `.start_byte()`, …), so the walk below is
+  binding-agnostic.
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterator
 
+from ._tsapi import wrap_root
 from .languages import LanguageSpec, get_language
 from .models import Chunk, ChunkKind
 from .parser import ParsedFile
@@ -46,7 +49,7 @@ def chunk_file(parsed: ParsedFile) -> list[Chunk]:
         return []
 
     chunks: list[Chunk] = []
-    root = parsed.tree.root_node()
+    root = wrap_root(parsed.tree)
     _walk(root, lang, parsed, parent_qname=None, out=chunks, skip_children_of=set())
     return chunks
 

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
+from .._tsapi import wrap_root
 from ..parser import ParsedFile
 
 # Names we never want to flag as cross-references. Pure-builtin noise.
@@ -36,7 +37,7 @@ _NOISE: frozenset[str] = frozenset(
 
 def extract_call_names(parsed: ParsedFile, *, start_byte: int, end_byte: int) -> list[str]:
     """Return a deduplicated, ordered list of callee names within the byte range."""
-    root = parsed.tree.root_node()
+    root = wrap_root(parsed.tree)
     src = parsed.source
     found: list[str] = []
     seen: set[str] = set()

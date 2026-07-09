@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
+from .._tsapi import wrap_root
 from ..parser import ParsedFile
 
 # Universal bases that are never repo-defined types worth an edge.
@@ -39,7 +40,7 @@ _JS_TS_TYPE_KINDS = {
 
 def extract_supertypes(parsed: ParsedFile, *, start_byte: int, end_byte: int) -> list[str]:
     """Return the deduplicated supertype names of the chunk's declaration."""
-    root = parsed.tree.root_node()
+    root = wrap_root(parsed.tree)
     src = parsed.source
     lang = parsed.language
 
