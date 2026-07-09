@@ -30,10 +30,18 @@ def _resolve(obj, *names):
 
 
 def _raw_child(node, i):
-    children = getattr(node, "children", _MISSING)
-    if children is not _MISSING and not callable(children):
-        return children[i]  # property-style: a list
-    return node.child(i)    # method-style
+    # Prefer the O(1) `Node.child(index)` method — present on BOTH standard
+    # py-tree-sitter and the language-pack wheels. Do NOT use `node.children[i]`:
+    # that rebuilds the entire children list on every access (O(n^2) over a walk),
+    # and on a huge node (e.g. a 4000-statement function) the allocation churn
+    # crashes the native binding with a segfault.
+    child = getattr(node, "child", None)
+    if callable(child):
+        return child(i)
+    children = getattr(node, "children", None)
+    if children is not None and not callable(children):
+        return children[i]
+    raise AttributeError("tree-sitter node exposes neither child() nor children")
 
 
 class TSNode:
