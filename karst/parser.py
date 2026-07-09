@@ -66,14 +66,19 @@ def parse_file(
         return None
 
     parser = registry.get(lang)
-    # The tree-sitter-language-pack Parser exposed on Windows wheels accepts
-    # str (not bytes). Tree-sitter still reports byte offsets, so we keep
-    # `source` as bytes for slicing and pass the decoded text to parse().
+    # tree-sitter's Parser.parse wants BYTES (the standard 0.23 API on
+    # Linux/macOS); node offsets are byte offsets and we slice `source` (bytes)
+    # downstream, so parsing the raw bytes is both correct and portable. Some
+    # older Windows wheels only accepted str — fall back to decoded text if this
+    # binding rejects bytes.
     try:
-        text = source.decode("utf-8")
-    except UnicodeDecodeError:
-        text = source.decode("utf-8", errors="replace")
-    tree = parser.parse(text)
+        tree = parser.parse(source)
+    except TypeError:
+        try:
+            text = source.decode("utf-8")
+        except UnicodeDecodeError:
+            text = source.decode("utf-8", errors="replace")
+        tree = parser.parse(text)
     sha = hashlib.sha1(source).hexdigest()
     relpath = path.resolve().relative_to(repo_root.resolve()).as_posix()
     return ParsedFile(
