@@ -60,11 +60,3 @@ karst-mcp = "karst.mcp_server:main"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["karst*"]
-
-[tool.pytest.ini_options]
-# `enterprise/` is intentionally excluded from the installed package (it's the
-# private tier), so an editable install doesn't put it on sys.path. Add the repo
-# root explicitly so its tests can `import enterprise` — this also makes bare
-# `pytest` (as CI runs it) behave like `python -m pytest`, which implicitly
-# prepends the current directory.
-pythonpath = ["."]
