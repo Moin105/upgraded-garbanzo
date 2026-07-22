@@ -1,7 +1,15 @@
 # karst — landing page
 
-The public marketing site for [karst](https://github.com/Moin105/upgraded-garbanzo), the MCP-native
+The public marketing site for [karst](https://github.com/Moin105/karst), the MCP-native
 code-context tool. Self-contained, no build step, deploys as a static site on Vercel's free tier.
+
+> **Site origin.** The absolute URLs in each page's `<head>` (canonical, `og:url`,
+> `og:image`, `twitter:image`) currently point at the live Vercel origin, because
+> `karst.dev` is **not owned**. Social crawlers won't resolve a relative
+> `og:image`, and a canonical aimed at a domain we don't control tells search
+> engines the real copy lives elsewhere — so these must always match wherever the
+> site is actually served. If the domain is acquired later, update them together
+> along with `robots.txt` and `sitemap.xml`.
 
 ## What it is
 

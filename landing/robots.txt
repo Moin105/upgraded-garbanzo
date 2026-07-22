@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://karst.dev/sitemap.xml
+Sitemap: https://upgraded-garbanzo-roan.vercel.app/sitemap.xml
