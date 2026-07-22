@@ -50,3 +50,6 @@ Thumbs.db
 mcp-publisher.exe
 login.log
 publish.log
+
+.vercel
+.env*
