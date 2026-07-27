@@ -53,3 +53,10 @@ publish.log
 
 .vercel
 .env*
+
+# Private infra — kept locally + in Moin105/karst-internal, NOT on public github
+/dashboard/
+/marketing/
+/integrations/
+/AI_Staff_Engineer_Agent_Architecture.pdf
+/build_agent_pdf.py
